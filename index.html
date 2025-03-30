@@ -2,43 +2,51 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kindle Sudoku (Large)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"> <!-- Added user-scalable=no, might help -->
+    <title>Sudoku</title> <!-- Simplified title -->
     <style>
         /* Basic Reset & High Contrast Body */
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%; /* Attempt to constrain height */
+             /* --- Force no scrollbars (Use with caution!) --- */
+            overflow: hidden !important;
+             /* ------------------------------------------------ */
+        }
+
         body {
             font-family: sans-serif;
-            margin: 5px;
-            padding: 0;
             background-color: white;
             color: black;
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
             user-select: none;
+            /* Add padding directly to body if needed, instead of margin */
+            padding: 5px;
+            box-sizing: border-box; /* Include padding in element's total width/height */
         }
 
         /* Centering Container - Very Wide */
         .container {
             text-align: center;
             max-width: 1300px; /* Increased max-width */
-            margin: 0 auto;
+            margin: 0 auto; /* Still useful for centering within the viewport if viewport is wider */
+            /* Remove height constraints here if body handles overflow */
         }
 
-        h1 {
-            font-size: 18px;
-            margin: 5px 0;
-        }
+        /* REMOVED h1 styles */
 
         /* Top Controls Area */
         .top-controls {
-            margin: 8px 0;
+            margin: 5px 0; /* Reduced margin slightly */
         }
 
         /* Sudoku Grid Table - Large Size & Borders */
         #sudoku-grid {
             border-collapse: collapse;
-            margin: 10px auto;
+            margin: 8px auto; /* Adjusted margin */
             border: 5px solid black; /* Increased outer border */
         }
 
@@ -84,7 +92,7 @@
 
         /* Bottom Controls Area - Allowing wrapping */
         .bottom-controls {
-            margin: 15px 0 10px 0;
+            margin: 10px 0 5px 0; /* Adjusted margin */
             text-align: center;
         }
 
@@ -131,7 +139,8 @@
 
         /* Message Area */
         #message {
-            margin-top: 10px;
+            margin-top: 5px; /* Reduced margin */
+            margin-bottom: 5px;
             font-size: 14px;
             min-height: 1.2em;
             font-weight: bold;
@@ -141,7 +150,7 @@
 <body>
 
     <div class="container">
-        <h1>Kindle Sudoku</h1>
+        <!-- h1 removed -->
 
         <!-- Top Controls: Difficulty and New Game -->
         <div class="top-controls">
@@ -178,21 +187,22 @@
 
     <script type="text/javascript">
         // --- Sudoku Logic (ES3 Compatible) ---
+        // (JavaScript code remains exactly the same as the previous version)
 
         var SIZE = 9;
         var BOX_SIZE = 3;
 
-        var currentPuzzle = null; // The initial puzzle board (0 for empty)
-        var currentSolution = null; // The complete solution
-        var userBoard = null; // The board reflecting user input
+        var currentPuzzle = null;
+        var currentSolution = null;
+        var userBoard = null;
 
-        var selectedCell = { row: -1, col: -1, element: null }; // Track selected cell
+        var selectedCell = { row: -1, col: -1, element: null };
 
         var difficultySettings = {
             'easy': 40,
             'medium': 46,
             'hard': 51,
-            'expert': 56 // Acknowledge potential slowness
+            'expert': 56
         };
 
         // --- Utility Functions ---
@@ -293,19 +303,15 @@
         function generatePuzzle(difficulty) {
             setMessage("Generating puzzle... (may take a while)");
             setTimeout(function() {
-                // 1. Create a fully solved board
                 currentSolution = createEmptyBoard();
                 if (!solveSudoku(currentSolution)) {
                      setMessage("Error: Failed to generate a solution.");
                      return;
                 }
-
-                // 2. Create the puzzle by removing cells
                 currentPuzzle = copyBoard(currentSolution);
                 var cellsToRemove = difficultySettings[difficulty] || difficultySettings['medium'];
-                var attempts = cellsToRemove * 2; // Limit attempts
+                var attempts = cellsToRemove * 2;
                 var removed = 0;
-
                 while (removed < cellsToRemove && attempts > 0) {
                     var r = Math.floor(Math.random() * SIZE);
                     var c = Math.floor(Math.random() * SIZE);
@@ -315,35 +321,27 @@
                     }
                     attempts--;
                 }
-
-                // 3. Initialize user board based on the generated puzzle
                 userBoard = copyBoard(currentPuzzle);
-
-                // 4. Render the board with numbers
-                renderBoard(); // Render the actual puzzle numbers
+                renderBoard();
                 setMessage("New game started. Select a cell to input numbers.");
                 clearSelection();
-
-            }, 50); // Delay allows message repaint
+            }, 50);
         }
 
         // --- UI Rendering ---
-
-        // Renders the board with numbers (or blanks) based on userBoard
         function renderBoard() {
             var table = document.getElementById('sudoku-grid');
-            table.innerHTML = ''; // Clear previous grid (important!)
+            table.innerHTML = '';
             for (var r = 0; r < SIZE; r++) {
                 var tr = document.createElement('tr');
                 for (var c = 0; c < SIZE; c++) {
                     var td = document.createElement('td');
-                    var val = userBoard ? userBoard[r][c] : 0; // Use userBoard if available
-                    var puzzleVal = currentPuzzle ? currentPuzzle[r][c] : 0; // Use currentPuzzle for 'given' check
+                    var val = userBoard ? userBoard[r][c] : 0;
+                    var puzzleVal = currentPuzzle ? currentPuzzle[r][c] : 0;
 
                     td.innerHTML = val === 0 ? '' : val.toString();
-                    td.className = 'cell'; // Base class
+                    td.className = 'cell';
 
-                    // Add classes for thick borders
                     if (r === 0) td.className += ' thick-border-top';
                     if ((r + 1) % BOX_SIZE === 0 && r !== SIZE - 1) td.className += ' thick-border-bottom';
                     if (c === 0) td.className += ' thick-border-left';
@@ -351,12 +349,10 @@
                     if (r === SIZE - 1) td.className += ' thick-border-bottom';
                     if (c === SIZE - 1) td.className += ' thick-border-right';
 
-                    // Style based on whether it's a given number or editable
-                    if (puzzleVal !== 0) { // Check against the puzzle definition
+                    if (puzzleVal !== 0) {
                         td.className += ' cell-given';
                     } else {
                         td.className += ' cell-editable';
-                         // Add onclick handler ONLY for editable cells
                         td.onclick = (function(row, col, element) {
                             return function() {
                                 selectCell(row, col, element);
@@ -369,18 +365,16 @@
             }
         }
 
-         // Renders just the empty grid structure without numbers
         function renderEmptyGridFrame() {
              var table = document.getElementById('sudoku-grid');
-             table.innerHTML = ''; // Clear previous grid
+             table.innerHTML = '';
              for (var r = 0; r < SIZE; r++) {
                 var tr = document.createElement('tr');
                 for (var c = 0; c < SIZE; c++) {
                     var td = document.createElement('td');
-                    td.innerHTML = ' '; // Non-breaking space for border rendering
-                    td.className = 'cell cell-editable'; // Base class, treat as editable visually initially
+                    td.innerHTML = ' ';
+                    td.className = 'cell cell-editable';
 
-                    // Add classes for thick borders
                     if (r === 0) td.className += ' thick-border-top';
                     if ((r + 1) % BOX_SIZE === 0 && r !== SIZE - 1) td.className += ' thick-border-bottom';
                     if (c === 0) td.className += ' thick-border-left';
@@ -388,12 +382,11 @@
                     if (r === SIZE - 1) td.className += ' thick-border-bottom';
                     if (c === SIZE - 1) td.className += ' thick-border-right';
 
-                    // NO onclick initially, wait for puzzle generation
                     tr.appendChild(td);
                 }
                 table.appendChild(tr);
             }
-            setMessage("Select difficulty and press 'New Game'."); // Update message after grid frame is drawn
+            setMessage("Select difficulty and press 'New Game'.");
         }
 
 
@@ -412,9 +405,7 @@
         }
 
         function selectCell(row, col, element) {
-            // Check if a puzzle is loaded and the cell is actually editable
             if (!userBoard || !currentPuzzle || currentPuzzle[row][col] !== 0) return;
-
             clearSelection();
             selectedCell.row = row;
             selectedCell.col = col;
@@ -429,7 +420,6 @@
                 setMessage("Please select an empty cell first.");
                 return;
             }
-            // Double check it's not a given number (should be prevented by selectCell too)
             if (currentPuzzle[selectedCell.row][selectedCell.col] !== 0) {
                 setMessage("Cannot change initial puzzle numbers.");
                 return;
@@ -438,13 +428,10 @@
             var c = selectedCell.col;
             userBoard[r][c] = num;
             selectedCell.element.innerHTML = num.toString();
-            // Clear potential error state from previous check
             selectedCell.element.className = selectedCell.element.className.replace(/\bcell-error\b/g, '');
-            // Ensure editable class remains if error was removed
              if (selectedCell.element.className.indexOf('cell-editable') === -1) {
                 selectedCell.element.className += ' cell-editable';
              }
-             // Ensure selected class remains
              if (selectedCell.element.className.indexOf('cell-selected') === -1) {
                 selectedCell.element.className += ' cell-selected';
              }
@@ -461,33 +448,26 @@
             }
             userBoard[selectedCell.row][selectedCell.col] = 0;
             selectedCell.element.innerHTML = '';
-            // Clear potential error state from previous check
             selectedCell.element.className = selectedCell.element.className.replace(/\bcell-error\b/g, '');
-             // Ensure editable class remains if error was removed
              if (selectedCell.element.className.indexOf('cell-editable') === -1) {
                 selectedCell.element.className += ' cell-editable';
              }
-             // Ensure selected class remains
              if (selectedCell.element.className.indexOf('cell-selected') === -1) {
                 selectedCell.element.className += ' cell-selected';
              }
         }
 
         function checkSolution() {
-            if (!userBoard || !currentPuzzle) { // Check if puzzle is loaded
+            if (!userBoard || !currentPuzzle) {
                 setMessage("Start a new game first.");
                 return;
             }
-
             var errorsFound = false;
             var isComplete = true;
             var table = document.getElementById('sudoku-grid');
             var rows = table.getElementsByTagName('tr');
             var cells = table.getElementsByTagName('td');
-
-            // Clear previous errors first from all cells
              for (var i = 0; i < cells.length; i++) {
-                 // Robustly remove error class without affecting others
                  var currentClasses = cells[i].className.split(' ');
                  var newClasses = [];
                  for (var j = 0; j < currentClasses.length; j++) {
@@ -497,43 +477,34 @@
                  }
                  cells[i].className = newClasses.join(' ');
              }
-
-
-            // Validate board
             for (var r = 0; r < SIZE; r++) {
                 for (var c = 0; c < SIZE; c++) {
                     var cellValue = userBoard[r][c];
                     var tdElement = rows[r].getElementsByTagName('td')[c];
-
                     if (cellValue === 0) {
-                        isComplete = false; // Puzzle is not finished
-                    } else if (currentPuzzle[r][c] === 0) { // Only check user-entered numbers
+                        isComplete = false;
+                    } else if (currentPuzzle[r][c] === 0) {
                          var originalValue = userBoard[r][c];
-                         userBoard[r][c] = 0; // Temporarily remove to check validity against others
+                         userBoard[r][c] = 0;
                          if (!isValid(userBoard, r, c, originalValue)) {
                              errorsFound = true;
-                             // Add error class if not already present
                              if (tdElement.className.indexOf('cell-error') === -1) {
                                  tdElement.className += ' cell-error';
                              }
-                             // Remove other potentially conflicting classes like editable/selected for visual clarity
                              tdElement.className = tdElement.className.replace(/\bcell-editable\b/g, '');
                              tdElement.className = tdElement.className.replace(/\bcell-selected\b/g, '');
                          }
-                         userBoard[r][c] = originalValue; // Put the value back
+                         userBoard[r][c] = originalValue;
                     }
                 }
             }
-
-            // Display appropriate message
             if (errorsFound) {
                 setMessage("Errors found (marked). Keep trying!");
             } else if (!isComplete) {
                 setMessage("Looking good so far, but not complete yet.");
             } else {
-                // If no immediate rule violations and board is complete, check against actual solution
                 var correct = true;
-                 if (!currentSolution) { // Should not happen if generatePuzzle ran
+                 if (!currentSolution) {
                      setMessage("Error: Solution data missing.");
                      return;
                  }
@@ -541,24 +512,21 @@
                     for(var c=0; c<SIZE; c++){
                         if(userBoard[r][c] !== currentSolution[r][c]){
                             correct = false;
-                             // Optionally mark the specific incorrect cell based on solution diff
                              var tdElement = rows[r].getElementsByTagName('td')[c];
                              if (tdElement.className.indexOf('cell-error') === -1) {
                                  tdElement.className += ' cell-error';
                              }
                              tdElement.className = tdElement.className.replace(/\bcell-editable\b/g, '');
                              tdElement.className = tdElement.className.replace(/\bcell-selected\b/g, '');
-                            // Don't break here, mark all incorrect ones if desired
                         }
                     }
                 }
-
                 if(correct){
                      setMessage("Congratulations! Puzzle Solved Correctly!");
-                     clearSelection(); // Deselect cell on win
+                     clearSelection();
                 } else {
                      setMessage("Puzzle complete, but some numbers are incorrect (marked).");
-                     errorsFound = true; // Set flag as technically incorrect
+                     errorsFound = true;
                 }
             }
         }
@@ -570,10 +538,8 @@
             generatePuzzle(selectedDifficulty);
         }
 
-        // Run on page load
         window.onload = function() {
-             renderEmptyGridFrame(); // Render the grid structure immediately
-             // Message is set within renderEmptyGridFrame now
+             renderEmptyGridFrame();
         };
 
     </script>
