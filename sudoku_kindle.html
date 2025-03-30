@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kindle Sudoku test</title>
+    <style>
+/* --- Basic Reset & Positioning Setup --- */
+html {
+    height: 100%;
+    box-sizing: border-box;
+}
+*, *:before, *:after {
+     box-sizing: inherit;
+}
+body {
+    position: relative; /* Positioning context */
+    height: 100vh;     /* Keep vh for body height reference */
+    margin: 0;
+    padding: 0;
+    overflow: hidden !important; /* Force no scroll */
+    font-family: sans-serif;
+    background-color: #ffffff;
+    color: #000000;
+    -webkit-text-size-adjust: 100%;
+}
+
+/* --- Fixed Top Bar (Actions & Message) --- */
+#top-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50px; /* PIXEL height */
+    background-color: #f8f8f8;
+    border-bottom: 1px solid #ccc;
+    padding: 5px;
+    z-index: 10;
+    text-align: center;
+    overflow: hidden;
+}
+#top-bar button {
+    min-width: 65px;
+    padding: 5px 8px;
+    font-size: 0.9em;
+    font-weight: bold;
+    border: 1px solid #000;
+    background-color: #eee;
+    margin: 0 5px;
+    line-height: 1.4;
+}
+#top-bar button:active { background-color: #ddd; }
+#message {
+    margin-top: 4px;
+    font-weight: bold;
+    font-size: 0.9em;
+    height: 1.5em;
+    line-height: 1.5em;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: #333;
+}
+
+
+/* --- Fixed Bottom Bar (Number Input) --- */
+#bottom-bar {
+    position: absolute;
+    /* CHANGE: Use pixel offset for bottom */
+    bottom: 76px; /* 10% buffer */
+    left: 0;
+    right: 0;
+    height: 45px; /* PIXEL height */
+    background-color: #f8f8f8;
+    border-top: 1px solid #ccc;
+    text-align: center;
+    padding: 4px 0;
+    z-index: 10;
+    white-space: nowrap;
+    overflow: hidden;
+}
+#bottom-bar button {
+    min-width: 36px;
+    height: 36px; /* Fit within 45px bar height */
+    padding: 0;
+    font-size: 1.4em;
+    font-weight: bold;
+    border: 1px solid #000;
+    background-color: #eee;
+    margin: 0 2px;
+    vertical-align: middle;
+    line-height: 35px;
+}
+ #bottom-bar button:active { background-color: #ddd; }
+
+
+/* --- Middle Area (Difficulty & Grid - Fills Space) --- */
+#middle-area {
+    position: absolute;
+    /* CHANGE: Use pixel offsets */
+    top: 50px;    /* Below top bar */
+    bottom: 121px; /* Above bottom bar + buffer */
+    left: 0;
+    right: 0;
+    width: 100%;
+    overflow: hidden !important; /* Force no scroll */
+    text-align: center;
+    padding: 5px 0; /* Vertical padding */
+}
+
+/* Difficulty Selector (within middle area) */
+.difficulty {
+    font-size: 0.85em;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+.difficulty label { margin: 0 5px; }
+.difficulty input[type="radio"] { margin-right: 2px; vertical-align: middle; }
+
+/* Sudoku Grid Table (within middle area) */
+#sudoku-grid {
+    border-collapse: collapse;
+    border: 2px solid #000000;
+    display: inline-block;
+    margin: 0 auto;
+    line-height: 1;
+    max-height: calc(100% - 30px); /* Still useful constraint */
+    max-width: 100%;
+}
+
+#sudoku-grid td {
+    /* CELL SIZE - Keep large based on previous calculation */
+    width: 60px;
+    height: 60px;
+    max-width: 60px;
+    max-height: 60px;
+    border: 1px solid #cccccc;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 2.5em;
+    font-weight: bold;
+    cursor: default;
+    background-color: #ffffff;
+    color: #000000;
+    padding: 0;
+    line-height: 1;
+}
+
+/* Thick borders for 3x3 boxes */
+#sudoku-grid tr:nth-child(3n) td { border-bottom: 2px solid #000000; }
+#sudoku-grid td:nth-child(3n) { border-right: 2px solid #000000; }
+#sudoku-grid tr:last-child td { border-bottom: none; }
+#sudoku-grid tr:last-child { border-right: none; }
+
+
+/* Cell States */
+.cell-input { cursor: pointer; color: #333377; background-color: #ffffff; }
+.cell-prefilled { background-color: #f0f0f0; color: #000000; font-weight: bold; }
+.cell-selected { background-color: #e0e0e0; outline: 1px solid #000000; }
+.cell-error { background-color: #000000 !important; color: #ffffff !important; }
+    </style>
+</head>
+<body>
+
+    <!-- Top Bar: Actions & Message -->
+    <div id="top-bar">
+        <div> <!-- Button container -->
+            <button onclick="startNewGame()">New Game</button>
+            <button onclick="checkSolution()">Check Puzzle</button>
+        </div>
+        <div id="message">Loading...</div>
+    </div>
+
+    <!-- Middle Area: Difficulty & Grid -->
+    <div id="middle-area">
+        <div class="difficulty">
+             Difficulty:
+             <label><input type="radio" name="difficulty" value="easy" checked> E</label>
+             <label><input type="radio" name="difficulty" value="medium"> M</label>
+             <label><input type="radio" name="difficulty" value="hard"> H</label>
+        </div>
+
+        <table id="sudoku-grid">
+            <!-- Grid generated by JavaScript -->
+        </table>
+    </div>
+
+    <!-- Bottom Bar: Number Input -->
+    <div id="bottom-bar">
+         <button onclick="inputNumber(1)">1</button>
+         <button onclick="inputNumber(2)">2</button>
+         <button onclick="inputNumber(3)">3</button>
+         <button onclick="inputNumber(4)">4</button>
+         <button onclick="inputNumber(5)">5</button>
+         <button onclick="inputNumber(6)">6</button>
+         <button onclick="inputNumber(7)">7</button>
+         <button onclick="inputNumber(8)">8</button>
+         <button onclick="inputNumber(9)">9</button>
+         <button onclick="inputNumber(0)">Clr</button>
+    </div>
+
+
+    <script type="text/javascript">
+        // --- ES3 Compatible JavaScript ---
+        // PASTE THE FULL JAVASCRIPT FROM THE PREVIOUS VERSION HERE
+        // (No changes needed to the JS logic, it interacts with the same IDs/functions)
+
+        // --- Global Variables ---
+        var SIZE = 9;
+        var BOX_SIZE = 3;
+        var currentBoard = [];
+        var initialBoard = [];
+        var solvedBoard = [];
+        var selectedRow = -1;
+        var selectedCol = -1;
+        var difficulty = 'easy';
+
+        // --- Utility Functions (Copied from previous version) ---
+        function getRandomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function shuffleArray(array) {
+            var currentIndex = array.length, temporaryValue, randomIndex;
+            while (0 !== currentIndex) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex -= 1;
+                temporaryValue = array[currentIndex];
+                array[currentIndex] = array[randomIndex];
+                array[randomIndex] = temporaryValue;
+            }
+            return array;
+        }
+
+        function setMessage(msg) {
+            var messageEl = document.getElementById('message');
+            if (messageEl) {
+                messageEl.innerHTML = ''; // Clear first
+                messageEl.appendChild(document.createTextNode(msg)); // Safer way for text
+            }
+        }
+
+        function removeClass(element, className) {
+            if (!element || !element.className) return;
+            var classes = element.className.split(' ');
+            var newClasses = [];
+            for (var i = 0; i < classes.length; i++) {
+                if (classes[i] !== className && classes[i] !== '') {
+                    newClasses.push(classes[i]);
+                }
+            }
+            element.className = newClasses.join(' ');
+        }
+
+        function addClass(element, className) {
+             if (!element) return;
+             var currentClasses = ' ' + element.className + ' ';
+             if (currentClasses.indexOf(' ' + className + ' ') === -1) {
+                 element.className += (element.className ? ' ' : '') + className;
+             }
+        }
+
+
+        // --- Sudoku Logic (Copied from previous version) ---
+        function findEmpty(board) {
+            for (var r = 0; r < SIZE; r++) {
+                for (var c = 0; c < SIZE; c++) {
+                    if (board[r][c] === 0) {
+                        return [r, c];
+                    }
+                }
+            }
+            return null;
+        }
+
+        function isValid(board, num, pos) {
+            var r = pos[0];
+            var c = pos[1];
+            for (var i = 0; i < SIZE; i++) { if (board[r][i] === num && c !== i) return false; }
+            for (var i = 0; i < SIZE; i++) { if (board[i][c] === num && r !== i) return false; }
+            var boxRowStart = Math.floor(r / BOX_SIZE) * BOX_SIZE;
+            var boxColStart = Math.floor(c / BOX_SIZE) * BOX_SIZE;
+            for (var i = boxRowStart; i < boxRowStart + BOX_SIZE; i++) {
+                for (var j = boxColStart; j < boxColStart + BOX_SIZE; j++) {
+                    if (board[i][j] === num && (i !== r || j !== c)) return false;
+                }
+            }
+            return true;
+        }
+
+        function solveSudoku(board) {
+            var find = findEmpty(board);
+            var r, c;
+            if (!find) return true;
+            else { r = find[0]; c = find[1]; }
+            var numbers = shuffleArray([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+            for (var i = 0; i < numbers.length; i++) {
+                var num = numbers[i];
+                if (isValid(board, num, [r, c])) {
+                    board[r][c] = num;
+                    if (solveSudoku(board)) return true;
+                    board[r][c] = 0; // Backtrack
+                }
+            }
+            return false;
+        }
+
+        function generatePuzzle() {
+            setMessage("Generating puzzle... (May take time)");
+            setTimeout(function() {
+                var newBoard = [];
+                for (var r = 0; r < SIZE; r++) { newBoard[r] = []; for (var c = 0; c < SIZE; c++) { newBoard[r][c] = 0; } }
+                if (!solveSudoku(newBoard)) { setMessage("Error: Failed to generate base solution."); return; }
+                solvedBoard = []; for (var r = 0; r < SIZE; r++) { solvedBoard[r] = newBoard[r].slice(); }
+                initialBoard = []; for (var r = 0; r < SIZE; r++) { initialBoard[r] = solvedBoard[r].slice(); }
+                var cellsToRemove;
+                if (difficulty === 'easy') cellsToRemove = 40;
+                else if (difficulty === 'medium') cellsToRemove = 50;
+                else cellsToRemove = 55; // Approx target, not exact count guaranteed
+                var removedCount = 0; var attempts = 0;
+                // Use a copy to track removable cells to avoid excessive random checks
+                var potentialRemovals = [];
+                for(var r=0; r<SIZE; r++) { for(var c=0; c<SIZE; c++) { potentialRemovals.push([r,c]); } }
+                shuffleArray(potentialRemovals); // Shuffle the list of all cells
+
+                while (removedCount < cellsToRemove && potentialRemovals.length > 0) {
+                     var pos = potentialRemovals.pop(); // Take one from the shuffled list
+                     var r = pos[0];
+                     var c = pos[1];
+                     // Simple removal logic (no uniqueness check for performance)
+                     if (initialBoard[r][c] !== 0) {
+                          initialBoard[r][c] = 0;
+                          removedCount++;
+                     }
+                }
+
+                currentBoard = []; for (var r = 0; r < SIZE; r++) { currentBoard[r] = initialBoard[r].slice(); }
+                clearAllErrorClasses();
+                if (!document.getElementById('cell-0-0')) { createGridHTML(); }
+                renderBoard();
+                setMessage("Puzzle ready! Select a cell.");
+            }, 50);
+        }
+
+        // --- UI Interaction (Copied from previous version) ---
+        function createGridHTML() {
+            var gridTable = document.getElementById('sudoku-grid');
+            if (!gridTable) return;
+            var tbody = gridTable.getElementsByTagName('tbody')[0];
+             if (!tbody) {
+                 tbody = document.createElement('tbody');
+                 gridTable.appendChild(tbody);
+             } else {
+                 tbody.innerHTML = '';
+             }
+            for (var r = 0; r < SIZE; r++) {
+                var tr = document.createElement('tr');
+                for (var c = 0; c < SIZE; c++) {
+                    var td = document.createElement('td');
+                    td.id = 'cell-' + r + '-' + c;
+                    td.setAttribute('data-row', r);
+                    td.setAttribute('data-col', c);
+                    td.onclick = function() {
+                        var row = parseInt(this.getAttribute('data-row'), 10);
+                        var col = parseInt(this.getAttribute('data-col'), 10);
+                        selectCell(row, col);
+                    };
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            }
+        }
+
+        function renderBoard() {
+            for (var r = 0; r < SIZE; r++) {
+                for (var c = 0; c < SIZE; c++) {
+                    var cell = document.getElementById('cell-' + r + '-' + c);
+                    if (!cell) continue;
+                    var value = currentBoard[r][c];
+                    var initialValue = initialBoard[r][c];
+                    var currentClasses = cell.className || '';
+                    var isError = currentClasses.indexOf('cell-error') !== -1;
+                    var baseClass = '';
+                    cell.innerHTML = (value === 0) ? '' : value;
+                    if (initialValue !== 0) { baseClass = 'cell-prefilled'; }
+                    else { baseClass = 'cell-input'; }
+                    cell.className = baseClass;
+                    if (isError) { addClass(cell, 'cell-error'); }
+                    if (r === selectedRow && c === selectedCol) { addClass(cell, 'cell-selected'); }
+                    else { removeClass(cell, 'cell-selected'); }
+                }
+            }
+        }
+
+        function selectCell(r, c) {
+            if (initialBoard[r][c] !== 0) { clearSelection(); return; }
+            if (selectedRow !== -1 && selectedCol !== -1) {
+                var prevCell = document.getElementById('cell-' + selectedRow + '-' + selectedCol);
+                if (prevCell) removeClass(prevCell, 'cell-selected');
+            }
+            selectedRow = r; selectedCol = c;
+            var currentCell = document.getElementById('cell-' + r + '-' + c);
+            if (currentCell) addClass(currentCell, 'cell-selected');
+            // Don't clear message on select
+        }
+
+        function clearSelection() {
+             if (selectedRow !== -1 && selectedCol !== -1) {
+                var prevCell = document.getElementById('cell-' + selectedRow + '-' + selectedCol);
+                if (prevCell) removeClass(prevCell, 'cell-selected');
+            }
+            selectedRow = -1; selectedCol = -1;
+        }
+
+        function inputNumber(num) {
+            if (selectedRow === -1 || selectedCol === -1) { setMessage("Please select a cell first."); return; }
+            if (initialBoard[selectedRow][selectedCol] !== 0) { setMessage("Cannot change pre-filled numbers."); return; }
+            var cell = document.getElementById('cell-' + selectedRow + '-' + selectedCol);
+            if (cell) { removeClass(cell, 'cell-error'); }
+            currentBoard[selectedRow][selectedCol] = num;
+            renderBoard();
+             var currentMsg = document.getElementById('message').textContent || document.getElementById('message').innerText;
+             if (currentMsg.indexOf('error') === -1 && currentMsg.indexOf('Solved') === -1 && currentMsg.indexOf('Generating') === -1) {
+                 setMessage(""); // Clear simple status messages
+             }
+        }
+
+        function clearAllErrorClasses() {
+            var gridTable = document.getElementById('sudoku-grid');
+            if (!gridTable) return;
+            var allCells = gridTable.getElementsByTagName('td');
+            for (var i = 0; i < allCells.length; i++) {
+                 removeClass(allCells[i], 'cell-error');
+            }
+        }
+
+        function checkSolution() {
+            var errorsFound = 0;
+            var cellsFilled = 0;
+            var correctCells = 0;
+            clearAllErrorClasses();
+            for (var r = 0; r < SIZE; r++) {
+                for (var c = 0; c < SIZE; c++) {
+                    var cellValue = currentBoard[r][c];
+                    if (!solvedBoard || !solvedBoard[r]) continue; // Check arrays exist
+                    var solvedValue = solvedBoard[r][c];
+                    var initialValue = initialBoard[r][c];
+                    if (cellValue !== 0) {
+                        cellsFilled++;
+                        if (initialValue === 0) {
+                            if (cellValue !== solvedValue) {
+                                errorsFound++;
+                                var cell = document.getElementById('cell-' + r + '-' + c);
+                                if (cell) addClass(cell, 'cell-error');
+                            } else { correctCells++; }
+                        } else { correctCells++; }
+                    }
+                }
+            }
+            if (errorsFound > 0) {
+                setMessage("Found " + errorsFound + " error(s). Incorrect cells inverted.");
+            } else if (cellsFilled === SIZE * SIZE && errorsFound === 0) {
+                setMessage("Congratulations! Puzzle Solved!");
+                clearSelection();
+            } else if (cellsFilled < SIZE * SIZE && errorsFound === 0) {
+                 setMessage("No errors found yet! Keep going.");
+            } else {
+                 setMessage("Check complete.");
+            }
+        }
+
+        function startNewGame() {
+            var difficultyRadios = document.getElementsByName('difficulty');
+            for (var i = 0; i < difficultyRadios.length; i++) {
+                if (difficultyRadios[i].checked) {
+                    difficulty = difficultyRadios[i].value;
+                    break;
+                }
+            }
+             clearSelection();
+             if (!document.getElementById('cell-0-0')) { createGridHTML(); }
+            generatePuzzle();
+        }
+
+        // --- Initialization ---
+        function init() {
+             createGridHTML();
+             startNewGame();
+        }
+
+        window.onload = init;
+
+    </script>
+
+</body>
+</html>
