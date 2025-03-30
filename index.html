@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kindle Sudoku (Large)</title>
+    <title>Kindle Sudoku (Med Large)</title>
     <style>
         /* Basic Reset & High Contrast Body */
         body {
@@ -18,10 +18,10 @@
             user-select: none;
         }
 
-        /* Centering Container - Wider for large grid */
+        /* Centering Container - Adjusted width */
         .container {
             text-align: center;
-            max-width: 800px; /* Increased max-width for the larger grid */
+            max-width: 650px; /* Adjusted for doubled grid size */
             margin: 0 auto;
         }
 
@@ -30,24 +30,29 @@
             margin: 5px 0;
         }
 
-        /* Sudoku Grid Table - Enlarged */
+        /* Top Controls Area */
+        .top-controls {
+            margin: 8px 0;
+        }
+
+        /* Sudoku Grid Table - Doubled Size */
         #sudoku-grid {
             border-collapse: collapse;
             margin: 10px auto;
-            border: 3px solid black; /* Thicker outer border */
+            border: 3px solid black; /* Slightly thicker outer border */
         }
 
         #sudoku-grid td {
             border: 1px solid #aaa; /* Thin inner borders */
-            width: 84px;  /* Tripled size */
-            height: 84px; /* Tripled size */
+            width: 56px;  /* Doubled size (original 28px) */
+            height: 56px; /* Doubled size */
             text-align: center;
             vertical-align: middle;
-            font-size: 40px; /* Increased font size */
+            font-size: 30px; /* Increased font size */
             cursor: default;
         }
 
-        /* Classes for thicker 3x3 box borders - Also thickened */
+        /* Classes for thicker 3x3 box borders - Thickened */
         .thick-border-top { border-top: 3px solid black !important; }
         .thick-border-bottom { border-bottom: 3px solid black !important; }
         .thick-border-left { border-left: 3px solid black !important; }
@@ -73,30 +78,56 @@
             color: black !important;
         }
 
-        /* Combined Controls Area at Bottom */
+        /* Bottom Controls Area */
         .bottom-controls {
-            margin: 15px 0 10px 0; /* Add some space above the controls */
-            text-align: center; /* Center the buttons within the div */
-            white-space: nowrap; /* Try to prevent wrapping, though might not work on Kindle browser */
-            overflow-x: auto; /* Allow horizontal scrolling if it does wrap */
+            margin: 15px 0 10px 0;
+            text-align: center;
+            white-space: nowrap; /* Attempt to keep on one line */
+            overflow-x: auto; /* Allow horizontal scroll if needed */
         }
 
-        /* Buttons & Select Styling */
-        .bottom-controls button, .bottom-controls select, .bottom-controls label {
-            font-size: 14px; /* Keep control font size reasonable */
-            padding: 8px 10px; /* Slightly larger padding */
+        /* General Button & Select Styling */
+        button, select {
+            font-size: 14px;
+            padding: 6px 8px;
             margin: 2px;
-            min-width: 35px; /* Minimum tap size */
+            min-width: 35px;
             border: 1px solid black;
             background-color: #eee;
             cursor: pointer;
-            display: inline-block; /* Ensure they stay on one line */
-            vertical-align: middle; /* Align items vertically */
+            display: inline-block;
+            vertical-align: middle;
+            box-sizing: border-box; /* Include padding/border in element's total width/height */
         }
 
-         .bottom-controls button:active, .bottom-controls select:active {
+         button:active, select:active {
              background-color: #ccc;
         }
+
+        /* Specific Styling for LARGE Number/Clear Buttons */
+        .input-num-button {
+             /* Roughly triple the original small button size */
+             width: 65px;
+             height: 50px;
+             font-size: 20px;
+             padding: 5px; /* Adjust padding as needed */
+             /* Vertical align might need adjustment if text isn't centered */
+             line-height: 40px; /* Try to center text vertically */
+        }
+
+        /* Styling for Check Button (standard size) */
+        .check-button {
+             /* Keep standard size or customize if needed */
+             padding: 8px 12px; /* Slightly more padding for 'Check' */
+        }
+
+        /* Label Styling */
+         label {
+             margin-right: 3px;
+             vertical-align: middle;
+             font-size: 14px;
+         }
+
 
         /* Message Area */
         #message {
@@ -110,16 +141,10 @@
 <body>
 
     <div class="container">
-        <h1>Kindle Sudoku (Large)</h1>
+        <h1>Kindle Sudoku</h1>
 
-        <div id="message">Select difficulty and start a new game.</div>
-
-        <table id="sudoku-grid">
-            <!-- Grid will be generated here by JavaScript -->
-        </table>
-
-        <!-- Consolidated Controls at the Bottom -->
-        <div class="bottom-controls">
+        <!-- Top Controls: Difficulty and New Game -->
+        <div class="top-controls">
             <label for="difficulty">Difficulty:</label>
             <select id="difficulty">
                 <option value="easy">Easy</option>
@@ -127,19 +152,28 @@
                 <option value="hard">Hard</option>
             </select>
             <button onclick="startGame()">New Game</button>
-            <span> | </span> <!-- Simple visual separator -->
-            <button onclick="inputNumber(1)">1</button>
-            <button onclick="inputNumber(2)">2</button>
-            <button onclick="inputNumber(3)">3</button>
-            <button onclick="inputNumber(4)">4</button>
-            <button onclick="inputNumber(5)">5</button>
-            <button onclick="inputNumber(6)">6</button>
-            <button onclick="inputNumber(7)">7</button>
-            <button onclick="inputNumber(8)">8</button>
-            <button onclick="inputNumber(9)">9</button>
-            <button onclick="clearNumber()">Clear</button>
-             <span> | </span> <!-- Simple visual separator -->
-            <button onclick="checkSolution()">Check</button>
+        </div>
+
+        <div id="message">Select difficulty and start a new game.</div>
+
+        <table id="sudoku-grid">
+            <!-- Grid will be generated here by JavaScript -->
+        </table>
+
+        <!-- Bottom Controls: Number Input, Clear, Check -->
+        <div class="bottom-controls">
+            <button class="input-num-button" onclick="inputNumber(1)">1</button>
+            <button class="input-num-button" onclick="inputNumber(2)">2</button>
+            <button class="input-num-button" onclick="inputNumber(3)">3</button>
+            <button class="input-num-button" onclick="inputNumber(4)">4</button>
+            <button class="input-num-button" onclick="inputNumber(5)">5</button>
+            <button class="input-num-button" onclick="inputNumber(6)">6</button>
+            <button class="input-num-button" onclick="inputNumber(7)">7</button>
+            <button class="input-num-button" onclick="inputNumber(8)">8</button>
+            <button class="input-num-button" onclick="inputNumber(9)">9</button>
+            <button class="input-num-button" onclick="clearNumber()">Clear</button>
+            <span> | </span> <!-- Visual separator -->
+            <button class="check-button" onclick="checkSolution()">Check</button>
         </div>
     </div>
 
@@ -160,7 +194,7 @@
             'easy': 40,
             'medium': 46,
             'hard': 51,
-            'expert': 56
+            'expert': 56 // Keep expert but acknowledge potential slowness
         };
 
         // --- Utility Functions ---
@@ -276,6 +310,7 @@
                     var r = Math.floor(Math.random() * SIZE);
                     var c = Math.floor(Math.random() * SIZE);
                     if (currentPuzzle[r][c] !== 0) {
+                        // Basic removal, still no unique check for performance
                         currentPuzzle[r][c] = 0;
                         removed++;
                     }
@@ -286,7 +321,7 @@
                 renderBoard();
                 setMessage("New game started. Select a cell to input numbers.");
                 clearSelection();
-            }, 50);
+            }, 50); // 50ms delay allows message repaint
         }
 
         // --- UI Rendering ---
@@ -340,8 +375,11 @@
         }
 
         function selectCell(row, col, element) {
+            // Only allow selecting editable cells
             if (!userBoard || currentPuzzle[row][col] !== 0) return;
-            clearSelection();
+
+            clearSelection(); // Clear previous selection first
+
             selectedCell.row = row;
             selectedCell.col = col;
             selectedCell.element = element;
@@ -356,6 +394,7 @@
                 setMessage("Please select an empty cell first.");
                 return;
             }
+            // Ensure it's not a pre-filled cell
             if (currentPuzzle[selectedCell.row][selectedCell.col] !== 0) {
                 setMessage("Cannot change initial puzzle numbers.");
                 return;
@@ -365,6 +404,7 @@
             var c = selectedCell.col;
             userBoard[r][c] = num;
             selectedCell.element.innerHTML = num.toString();
+            // Clear error state if it had one
             selectedCell.element.className = selectedCell.element.className.replace(/\bcell-error\b/g, '');
         }
 
@@ -373,12 +413,14 @@
                  setMessage("Please select an empty cell first.");
                  return;
             }
+             // Ensure it's not a pre-filled cell
             if (currentPuzzle[selectedCell.row][selectedCell.col] !== 0) {
                  setMessage("Cannot clear initial puzzle numbers.");
                 return;
             }
             userBoard[selectedCell.row][selectedCell.col] = 0;
             selectedCell.element.innerHTML = '';
+             // Clear error state if it had one
             selectedCell.element.className = selectedCell.element.className.replace(/\bcell-error\b/g, '');
         }
 
@@ -392,25 +434,27 @@
             var isComplete = true;
             var table = document.getElementById('sudoku-grid');
             var rows = table.getElementsByTagName('tr');
-            var cells = table.getElementsByTagName('td');
+            var cells = table.getElementsByTagName('td'); // Get all cells for clearing errors
 
-            // Clear previous errors
+            // Clear previous errors first
              for (var i = 0; i < cells.length; i++) {
                  cells[i].className = cells[i].className.replace(/\bcell-error\b/g, '');
              }
 
+            // Validate board
             for (var r = 0; r < SIZE; r++) {
                 for (var c = 0; c < SIZE; c++) {
                     var cellValue = userBoard[r][c];
                     var tdElement = rows[r].getElementsByTagName('td')[c];
 
                     if (cellValue === 0) {
-                        isComplete = false;
+                        isComplete = false; // Puzzle is not finished
                     } else if (currentPuzzle[r][c] === 0) { // Only check user-entered numbers
                          var originalValue = userBoard[r][c]; // Store the value
                          userBoard[r][c] = 0; // Temporarily remove to check validity against others
                          if (!isValid(userBoard, r, c, originalValue)) {
                              errorsFound = true;
+                             // Add error class without removing others if not already present
                              if (tdElement.className.indexOf('cell-error') === -1) {
                                  tdElement.className += ' cell-error';
                              }
@@ -420,27 +464,38 @@
                 }
             }
 
+            // Display appropriate message
             if (errorsFound) {
                 setMessage("Errors found (marked). Keep trying!");
             } else if (!isComplete) {
                 setMessage("Looking good so far, but not complete yet.");
             } else {
+                // If no errors found and board is complete, check against actual solution
                 var correct = true;
                 for(var r=0; r<SIZE; r++){
                     for(var c=0; c<SIZE; c++){
                         if(userBoard[r][c] !== currentSolution[r][c]){
                             correct = false;
+                            // Mark the specific incorrect cell (optional, could be confusing if multiple solutions exist)
+                             // rows[r].getElementsByTagName('td')[c].className += ' cell-error';
                             break;
                         }
                     }
                      if(!correct) break;
                 }
+
                 if(correct){
                      setMessage("Congratulations! Puzzle Solved Correctly!");
                      clearSelection(); // Deselect cell on win
                 } else {
-                     setMessage("Puzzle complete, but some numbers are incorrect.");
-                     errorsFound = true; // Still mark as error state
+                     // This case means the board is filled according to Sudoku rules,
+                     // but doesn't match the *generated* solution (could happen if generator
+                     // didn't enforce uniqueness, which we aren't doing).
+                     setMessage("Puzzle complete, but incorrect (or alternate solution found).");
+                     // We already marked immediate rule violations above.
+                     // We could re-run checks comparing to `currentSolution` to mark specific diffs,
+                     // but let's keep it simple. The user knows it's wrong/different.
+                     errorsFound = true; // Consider this an error state for feedback
                 }
             }
         }
@@ -454,7 +509,30 @@
 
         window.onload = function() {
              setMessage("Select difficulty and press 'New Game'.");
+             // renderEmptyGridFrame();
         };
+        function renderEmptyGridFrame() {
+             var table = document.getElementById('sudoku-grid');
+             table.innerHTML = ''; // Clear previous grid
+             for (var r = 0; r < SIZE; r++) {
+                var tr = document.createElement('tr');
+                for (var c = 0; c < SIZE; c++) {
+                    var td = document.createElement('td');
+                    td.innerHTML = ' '; // Non-breaking space to ensure borders render
+                    td.className = 'cell'; // Base class for border styling
+                     // Add classes for thick borders
+                    if (r === 0) td.className += ' thick-border-top';
+                    if ((r + 1) % BOX_SIZE === 0 && r !== SIZE - 1) td.className += ' thick-border-bottom';
+                    if (c === 0) td.className += ' thick-border-left';
+                    if ((c + 1) % BOX_SIZE === 0 && c !== SIZE - 1) td.className += ' thick-border-right';
+                    if (r === SIZE - 1) td.className += ' thick-border-bottom';
+                    if (c === SIZE - 1) td.className += ' thick-border-right';
+                    tr.appendChild(td);
+                }
+                table.appendChild(tr);
+            }
+        }
+
 
     </script>
 
