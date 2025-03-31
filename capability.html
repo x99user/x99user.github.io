@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Granular Browser Capability Tester (Text Log)</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.5;
+            padding: 10px;
+            background-color: #f8f8f8;
+            color: #333;
+            font-size: 14px;
+        }
+        h1 {
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 5px;
+            margin-top: 0;
+            font-size: 1.5em;
+        }
+         #info {
+             margin-bottom: 15px;
+             font-size: 0.9em;
+             line-height: 1.4;
+         }
+         label {
+             font-weight: bold;
+             display: block;
+             margin-bottom: 5px;
+         }
+        #resultsLog {
+            width: 98%; /* Use percentage for responsiveness */
+            height: 60vh; /* Use viewport height */
+            min-height: 200px; /* Ensure a minimum size */
+            font-family: monospace;
+            font-size: 0.85em; /* Slightly smaller monospaced font */
+            border: 1px solid #ccc;
+            background-color: #fff;
+            padding: 5px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
+            white-space: pre; /* Preserve whitespace and newlines */
+            overflow-wrap: break-word; /* Wrap long lines if necessary */
+            resize: vertical; /* Allow vertical resizing */
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Granular Browser Capability Test (Text Log)</h1>
+    <div id="info">
+        <strong>User Agent:</strong> <span id="userAgent"></span><br>
+        <strong>Platform:</strong> <span id="platform"></span><br>
+        <strong>Language:</strong> <span id="language"></span><br>
+    </div>
+
+    <label for="resultsLog">Test Results Log:</label>
+    <textarea id="resultsLog" readonly>Running tests...</textarea>
+
+    <script>
+        // --- Test Infrastructure ---
+        (function() {
+            const resultsLog = document.getElementById('resultsLog');
+            let logOutput = ""; // Start with empty log string
+
+            // Populate basic info
+            document.getElementById('userAgent').textContent = navigator.userAgent || 'N/A';
+            document.getElementById('platform').textContent = navigator.platform || 'N/A';
+            document.getElementById('language').textContent = navigator.language || navigator.userLanguage || 'N/A';
+
+            // Initial log message
+            logOutput += `Test Run Started: ${new Date().toISOString()}\n`;
+            logOutput += `User Agent: ${navigator.userAgent || 'N/A'}\n`;
+            logOutput += `Platform: ${navigator.platform || 'N/A'}\n`;
+            logOutput += `Language: ${navigator.language || navigator.userLanguage || 'N/A'}\n\n`;
+            resultsLog.value = logOutput; // Initial update
+
+            function logHeader(title) {
+                logOutput += `\n--- ${title.toUpperCase()} ---\n`;
+            }
+
+            function logSubHeader(title) {
+                logOutput += `  ${title}:\n`; // Indent subheaders
+            }
+
+            function logResult(featureName, status, details = '') {
+                let statusText = 'Unknown';
+
+                if (typeof status === 'boolean') {
+                    statusText = status ? 'Yes' : 'No';
+                } else if (status === null || status === undefined) {
+                     statusText = 'No'; // Treat null/undefined as unsupported
+                } else if (typeof status === 'string') {
+                    // Pass through strings like 'Partial', 'Yes (Webkit)', etc.
+                    statusText = status;
+                } else if (typeof status === 'number') {
+                    statusText = status.toString(); // Handle numbers if needed
+                }
+
+                logOutput += `    - ${featureName}: ${statusText}`; // Indent items
+                if (details) {
+                    logOutput += ` (${details})`;
+                }
+                logOutput += `\n`;
+                 // Update the textarea content dynamically
+                resultsLog.value = logOutput;
+                // Scroll to bottom (optional, might be slow on Kindle)
+                // resultsLog.scrollTop = resultsLog.scrollHeight;
+            }
+
+             // Helper for try/catch checks returning boolean
+            function check(fn) {
+                try {
+                    // Execute the function and ensure it returns truthy, not just runs without error
+                    const result = fn();
+                    // Treat 0 or empty string from a check function as false unless explicitly allowed
+                    return !!result;
+                } catch (e) {
+                    // console.error("Check failed for", fn.toString(), e); // Optional debug
+                    return false;
+                }
+            }
+
+             // Helper for checking property existence on an object
+            function hasProp(obj, prop) {
+                // Ensure obj is not null/undefined before checking prop
+                return typeof obj !== 'undefined' && obj !== null && prop in obj;
+            }
+
+             // Helper for checking CSS property support (basic)
+             function supportsCSS(property, value = 'inherit') {
+                 if (typeof CSS !== 'undefined' && CSS.supports) {
+                     // Preferred modern method
+                     // Check both property name and specific value support
+                     if (CSS.supports(property, value)) return true;
+                     if (CSS.supports(`(${property}: ${value})`)) return true;
+                     // Fallback check for just the property name if value check fails
+                     if (CSS.supports(property, 'inherit') || CSS.supports(`(${property}: inherit)`)) return 'Yes (prop only)';
+                 }
+                 // Fallback: check style object (less reliable, doesn't check values)
+                 const style = document.body.style;
+                 if (typeof style === 'undefined') return false; // Body style might not be ready early
+
+                 if (property in style) return 'Yes (style prop)';
+                 // Check vendor prefixes (common ones)
+                 const capitalized = property.charAt(0).toUpperCase() + property.slice(1);
+                 if (`Webkit${capitalized}` in style) return 'Yes (Webkit)';
+                 if (`Moz${capitalized}` in style) return 'Yes (Moz)';
+                 if (`ms${capitalized}` in style) return 'Yes (ms)';
+                 if (`O${capitalized}` in style) return 'Yes (O)';
+                 return false;
+             }
+
+             // --- Test Execution ---
+             // Wrap tests in a function to ensure DOM is ready for CSS checks etc.
+            function runTests() {
+                logHeader("Core JavaScript & ES Features");
+                logSubHeader("ES5 / Basic");
+                logResult("Basic JS Execution", true);
+                logResult("JSON Parsing (JSON.parse)", check(() => typeof JSON !== 'undefined' && typeof JSON.parse === 'function'));
+                logResult("Strict Mode ('use strict')", check(() => { try { Function("'use strict'; return this;")(); return true; } catch(e){ return false; }}));
+                logResult("Object.defineProperty", check(() => typeof Object.defineProperty === 'function'));
+
+                logSubHeader("ES6 / ES2015");
+                logResult("let / const", check(() => { try { eval("let a = 1; const b = 2;"); return true; } catch (e) { return false; } }));
+                logResult("Arrow Functions", check(() => { try { eval("const fn = () => true;"); return true; } catch (e) { return false; } }));
+                logResult("Promises", check(() => typeof Promise !== 'undefined'));
+                logResult("Map", check(() => typeof Map !== 'undefined'));
+                logResult("Set", check(() => typeof Set !== 'undefined'));
+                logResult("Symbol", check(() => typeof Symbol !== 'undefined'));
+                logResult("Template Literals", check(() => { try { eval("const x = 'test'; `${x}`"); return true; } catch (e) { return false; } }));
+                logResult("Default Parameters", check(() => { try { eval("function fn(a = true) { return a; };"); return true; } catch (e) { return false; } }));
+                logResult("Rest Parameters", check(() => { try { eval("function fn(...args) { return args.length; };"); return true; } catch (e) { return false; } }));
+                logResult("Spread Operator", check(() => { try { eval("const arr1 = [1, 2]; const arr2 = [...arr1, 3];"); return true; } catch (e) { return false; } }));
+                logResult("Typed Arrays (Uint8Array)", check(() => typeof Uint8Array !== 'undefined'));
+
+                logSubHeader("ES2016+ (Selected)");
+                logResult("Array.prototype.includes", check(() => typeof Array.prototype.includes === 'function'));
+                logResult("Async/Await", check(() => { try { eval("async function test(){ await Promise.resolve(); }"); return true; } catch(e) { return false; } } ));
+                logResult("Object.values / Object.entries", check(() => typeof Object.values === 'function' && typeof Object.entries === 'function'));
+                logResult("Optional Chaining (?.)", check(() => { try { eval("const obj = {}; const x = obj?.prop?.subprop;"); return true; } catch (e) { return false; }}));
+                logResult("Nullish Coalescing (??)", check(() => { try { eval("const x = null ?? 'default';"); return true; } catch (e) { return false; }}));
+
+
+                logHeader("HTML5 Elements");
+                const testElement = (tag) => check(() => {
+                    const el = document.createElement(tag);
+                    // Check if it's a specific HTMLElement subclass or just a generic HTMLElement/HTMLUnknownElement
+                    const isKnown = window[`HTML${tag.charAt(0).toUpperCase() + tag.slice(1)}Element`];
+                    return el instanceof HTMLElement && !(el instanceof HTMLUnknownElement) && (!isKnown || el instanceof isKnown);
+                });
+                logResult("<canvas>", testElement('canvas'));
+                logResult("<audio>", testElement('audio'));
+                logResult("<video>", testElement('video'));
+                logResult("<details> & <summary>", testElement('details') && testElement('summary'));
+                logResult("<meter>", testElement('meter'));
+                logResult("<progress>", testElement('progress'));
+                logResult("<template>", testElement('template'));
+                logResult("<svg> (inline)", check(() => !!document.createElementNS && !!document.createElementNS('http://www.w3.org/2000/svg', 'svg').createSVGRect));
+                logResult("Attribute: hidden", hasProp(document.createElement('div'), 'hidden'));
+                logResult("Attribute: data-*", check(() => { try { const el = document.createElement('div'); el.setAttribute('data-test', 'val'); return el.dataset.test === 'val'; } catch(e) { return false; }}));
+
+
+                logHeader("Forms");
+                const testInputType = (type) => check(() => { const i = document.createElement('input'); i.setAttribute('type', type); return i.type === type; });
+                logResult("Input type: color", testInputType('color'));
+                logResult("Input type: date", testInputType('date'));
+                logResult("Input type: datetime-local", testInputType('datetime-local'));
+                logResult("Input type: email", testInputType('email'));
+                logResult("Input type: month", testInputType('month'));
+                logResult("Input type: number", testInputType('number'));
+                logResult("Input type: range", testInputType('range'));
+                logResult("Input type: search", testInputType('search'));
+                logResult("Input type: tel", testInputType('tel'));
+                logResult("Input type: time", testInputType('time'));
+                logResult("Input type: url", testInputType('url'));
+                logResult("Input type: week", testInputType('week'));
+                logResult("Attribute: placeholder", hasProp(document.createElement('input'), 'placeholder'));
+                logResult("Attribute: required", hasProp(document.createElement('input'), 'required'));
+                logResult("Attribute: pattern", hasProp(document.createElement('input'), 'pattern'));
+                logResult("Attribute: autofocus", hasProp(document.createElement('input'), 'autofocus'));
+                logResult("Form Validation API (checkValidity)", hasProp(document.createElement('form'), 'checkValidity'));
+
+
+                logHeader("Graphics & Media");
+                logSubHeader("Canvas 2D");
+                let canvas = null, ctx2d = null;
+                try { canvas = document.createElement('canvas'); } catch(e){}
+                if (canvas && typeof canvas.getContext === 'function') {
+                    try { ctx2d = canvas.getContext('2d'); } catch(e){}
+                }
+                logResult("2D Context", !!ctx2d);
+                if (ctx2d) {
+                    logResult("Method: fillText", hasProp(ctx2d, 'fillText'));
+                    logResult("Method: measureText", hasProp(ctx2d, 'measureText'));
+                    logResult("Method: drawImage", hasProp(ctx2d, 'drawImage'));
+                    logResult("Method: ellipse", hasProp(ctx2d, 'ellipse')); // Newer method
+                    logResult("Feature: Path2D", check(() => typeof Path2D !== 'undefined'));
+                    logResult("Feature: ImageData", check(() => typeof ImageData !== 'undefined'));
+                    const imageSmoothing = hasProp(ctx2d, 'imageSmoothingEnabled') || hasProp(ctx2d, 'webkitImageSmoothingEnabled') || hasProp(ctx2d, 'mozImageSmoothingEnabled') || hasProp(ctx2d, 'msImageSmoothingEnabled');
+                    logResult("Feature: Image Smoothing", imageSmoothing);
+                }
+
+                logSubHeader("WebGL");
+                 const getGlContext = (version) => check(() => {
+                    const c = document.createElement('canvas');
+                    // Need try-catch as getContext itself can throw in some environments
+                    try {
+                        return c.getContext(version) || c.getContext(`experimental-${version}`);
+                    } catch (e) { return null; }
+                });
+                const hasWebGL1 = getGlContext('webgl');
+                const hasWebGL2 = getGlContext('webgl2');
+                logResult("WebGL 1 Context", !!hasWebGL1);
+                logResult("WebGL 2 Context", !!hasWebGL2);
+
+                logSubHeader("Audio");
+                let audio = null;
+                try { audio = document.createElement('audio'); } catch(e){}
+                logResult("<audio> Element", !!audio);
+                 if (audio && typeof audio.canPlayType === 'function') {
+                    const canPlayType = (type) => { try { return audio.canPlayType(type); } catch(e){ return ''; } };
+                    logResult("Format Check: MP3 (audio/mpeg)", canPlayType('audio/mpeg;') || 'No');
+                    logResult("Format Check: AAC (audio/aac)", canPlayType('audio/aac;') || 'No');
+                    logResult("Format Check: Ogg Vorbis (audio/ogg; codecs=vorbis)", canPlayType('audio/ogg; codecs="vorbis"') || 'No');
+                    logResult("Format Check: Opus (audio/opus) or (audio/ogg; codecs=opus)", canPlayType('audio/opus') || canPlayType('audio/ogg; codecs="opus"') || 'No');
+                    logResult("Format Check: WAV (audio/wav; codecs=1)", canPlayType('audio/wav; codecs="1"') || 'No');
+                    logResult("Attribute: preload", hasProp(audio, 'preload'));
+                    logResult("Attribute: autoplay", hasProp(audio, 'autoplay')); // Note: Autoplay is often restricted by browsers
+                    logResult("API: playbackRate", hasProp(audio, 'playbackRate'));
+                }
+                 const AudioContext = window.AudioContext || window.webkitAudioContext;
+                 logResult("Web Audio API (AudioContext)", !!AudioContext);
+                 if (AudioContext) {
+                     let audioCtx = null;
+                     try { audioCtx = new AudioContext(); } catch (e) {}
+                     if (audioCtx) {
+                         logResult("Node: GainNode (createGain)", hasProp(audioCtx, 'createGain'));
+                         logResult("Node: BufferSource (createBufferSource)", hasProp(audioCtx, 'createBufferSource'));
+                         logResult("Node: Oscillator (createOscillator)", hasProp(audioCtx, 'createOscillator'));
+                         logResult("Method: decodeAudioData", hasProp(audioCtx, 'decodeAudioData'));
+                         if (typeof audioCtx.close === 'function') { try { audioCtx.close(); } catch(e){} } // Clean up
+                     } else {
+                         logResult("Web Audio API Context Creation", false, "Failed to instantiate");
+                     }
+                 }
+
+                logSubHeader("Video");
+                let video = null;
+                try { video = document.createElement('video'); } catch(e){}
+                logResult("<video> Element", !!video);
+                if (video && typeof video.canPlayType === 'function') {
+                    const canPlayType = (type) => { try { return video.canPlayType(type); } catch(e){ return ''; } };
+                    logResult("Format Check: H.264 (video/mp4; codecs=avc1...)", canPlayType('video/mp4; codecs="avc1.42E01E"') || canPlayType('video/mp4; codecs="avc1.64001F"') || 'No');
+                    logResult("Format Check: VP8 + Vorbis (video/webm; codecs=vp8,vorbis)", canPlayType('video/webm; codecs="vp8, vorbis"') || 'No');
+                    logResult("Format Check: VP9 + Opus (video/webm; codecs=vp9,opus)", canPlayType('video/webm; codecs="vp9, opus"') || 'No');
+                    logResult("Format Check: AV1 (video/mp4; codecs=av01...)", canPlayType('video/mp4; codecs="av01.0.05M.08"') || 'No'); // Basic AV1 check
+                    logResult("Format Check: Ogg Theora + Vorbis", canPlayType('video/ogg; codecs="theora, vorbis"') || 'No');
+                    logResult("Attribute: controls", hasProp(video, 'controls'));
+                    logResult("Attribute: poster", hasProp(video, 'poster'));
+                    logResult("API: playbackRate", hasProp(video, 'playbackRate'));
+                    logResult("API: requestFullscreen", check(() => hasProp(video, 'requestFullscreen') || hasProp(video, 'webkitRequestFullscreen') || hasProp(video, 'mozRequestFullScreen') || hasProp(video, 'msRequestFullscreen')));
+                }
+
+
+                logHeader("Storage");
+                logResult("Local Storage", check(() => { try { localStorage.setItem('__test', '1'); localStorage.removeItem('__test'); return true; } catch(e){ return false; } }));
+                logResult("Session Storage", check(() => { try { sessionStorage.setItem('__test', '1'); sessionStorage.removeItem('__test'); return true; } catch(e){ return false; } }));
+                const indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+                logResult("IndexedDB", !!indexedDB);
+                if(indexedDB) {
+                     logResult("IndexedDB: open() method", check(() => typeof indexedDB.open === 'function'));
+                     // Note: Actually opening requires async handling, just check method presence
+                }
+                logResult("Cache API (window.caches)", check(() => typeof window.caches !== 'undefined'));
+
+
+                logHeader("Connectivity & Workers");
+                logSubHeader("Communication");
+                logResult("XMLHttpRequest Level 2", check(() => typeof XMLHttpRequest !== 'undefined' && hasProp(new XMLHttpRequest(), 'upload')));
+                logResult("Fetch API", check(() => typeof fetch === 'function'));
+                if(check(() => typeof fetch === 'function')) {
+                    logResult("Fetch: Request object", check(() => typeof Request !== 'undefined'));
+                    logResult("Fetch: Response object", check(() => typeof Response !== 'undefined'));
+                    logResult("Fetch: Headers object", check(() => typeof Headers !== 'undefined'));
+                }
+                logResult("WebSockets", check(() => typeof WebSocket !== 'undefined'));
+                logResult("Server-Sent Events (EventSource)", check(() => typeof EventSource !== 'undefined'));
+
+                logSubHeader("Workers");
+                logResult("Web Workers (Dedicated)", check(() => typeof Worker !== 'undefined'));
+                logResult("Shared Workers", check(() => typeof SharedWorker !== 'undefined'));
+                logResult("Service Workers", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'serviceWorker')));
+
+
+                logHeader("Device Access & Interaction");
+                logResult("Touch Events (ontouchstart / maxTouchPoints)", check(() => 'ontouchstart' in window || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0)));
+                logResult("Pointer Events", check(() => typeof PointerEvent !== 'undefined'));
+                logResult("Gamepad API (navigator.getGamepads)", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'getGamepads')));
+                logResult("Geolocation API (navigator.geolocation)", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'geolocation')));
+                logResult("Orientation Events (DeviceOrientationEvent)", check(() => typeof DeviceOrientationEvent !== 'undefined'));
+                logResult("Motion Events (DeviceMotionEvent)", check(() => typeof DeviceMotionEvent !== 'undefined'));
+                logResult("Vibration API (navigator.vibrate)", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'vibrate')));
+                logResult("Screen Orientation API (screen.orientation)", check(() => typeof screen !== 'undefined' && hasProp(screen, 'orientation') && hasProp(screen.orientation, 'type')));
+                logResult("Fullscreen API (element.requestFullscreen)", check(() => { const el = document.documentElement; return !!(el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen); }) );
+                logResult("Battery Status API (navigator.getBattery)", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'getBattery'))); // Often requires secure context (HTTPS)
+                logResult("Media Capture API (navigator.mediaDevices.getUserMedia)", check(() => typeof navigator !== 'undefined' && navigator.mediaDevices && hasProp(navigator.mediaDevices, 'getUserMedia')));
+
+
+                logHeader("Performance & Timing");
+                const perf = window.performance || window.mozPerformance || window.msPerformance || window.webkitPerformance;
+                logResult("Performance Object", !!perf);
+                if (perf) {
+                    logResult("High Resolution Time (performance.now)", check(() => hasProp(perf, 'now') && typeof perf.now === 'function'));
+                    logResult("Navigation Timing API (performance.timing)", check(() => hasProp(perf, 'timing') && hasProp(perf.timing, 'navigationStart')));
+                    logResult("Resource Timing API (performance.getEntriesByType)", check(() => hasProp(perf, 'getEntriesByType')));
+                    logResult("User Timing API (performance.mark/measure)", check(() => hasProp(perf, 'mark') && hasProp(perf, 'measure')));
+                }
+                 logResult("Animation Timing (requestAnimationFrame)", check(() => typeof requestAnimationFrame === 'function' || typeof webkitRequestAnimationFrame === 'function' || typeof mozRequestAnimationFrame === 'function'));
+
+
+                logHeader("Other APIs");
+                logResult("Web Crypto API (crypto.subtle)", check(() => !!(window.crypto && (window.crypto.subtle || window.crypto.webkitSubtle))));
+                logResult("URL API (window.URL)", check(() => typeof window.URL !== 'undefined'));
+                logResult("Internationalization API (Intl)", check(() => typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function'));
+                logResult("Base64 Utilities (btoa/atob)", check(() => typeof btoa === 'function' && typeof atob === 'function'));
+                logResult("History API (pushState/replaceState)", check(() => typeof history !== 'undefined' && typeof history.pushState === 'function' && typeof history.replaceState === 'function'));
+
+
+                logHeader("CSS Feature Detection (via JS)");
+                 logResult("CSS Variables (--*)", supportsCSS('--dummy-var'));
+                 logResult("CSS calc()", supportsCSS('width', 'calc(1px + 1px)')); // Check value support
+                 logResult("CSS Flexbox", supportsCSS('display', 'flex'));
+                 logResult("CSS Grid Layout", supportsCSS('display', 'grid'));
+                 logResult("CSS Transforms", supportsCSS('transform'));
+                 logResult("CSS Transitions", supportsCSS('transition'));
+                 logResult("CSS Animations", supportsCSS('animation'));
+                 logResult("CSS Filters", supportsCSS('filter'));
+                 logResult("CSS @supports", check(() => typeof CSS !== 'undefined' && typeof CSS.supports === 'function'));
+
+
+                logHeader("Web3");
+                logResult("Ethereum Provider (window.ethereum)", check(() => typeof window.ethereum !== 'undefined'));
+
+                logOutput += "\n--- Test Run Complete ---";
+                resultsLog.value = logOutput; // Final update
+                resultsLog.scrollTop = 0; // Scroll back to top after completion
+            }
+
+            // Run tests after page load to ensure body exists for CSS checks etc.
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', runTests);
+            } else {
+                // If already loaded or interactive, wait a tiny bit for rendering
+                // This helps ensure document.body.style is available for CSS checks
+                 setTimeout(runTests, 0);
+            }
+
+        })(); // End of IIFE
+    </script>
+
+</body>
+</html>
