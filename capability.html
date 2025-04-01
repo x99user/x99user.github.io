@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Granular Browser Capability Tester (Text Log - Debug)</title>
+    <title>Exhaustive Method Presence Tester (Text Log)</title>
     <style>
         body {
             font-family: sans-serif;
@@ -30,35 +30,37 @@
              margin-bottom: 5px;
          }
         #resultsLog {
-            width: 98%; /* Use percentage for responsiveness */
-            height: 60vh; /* Use viewport height */
-            min-height: 200px; /* Ensure a minimum size */
+            width: 98%;
+            height: 70vh; /* Increased height */
+            min-height: 300px;
             font-family: monospace;
-            font-size: 0.85em; /* Slightly smaller monospaced font */
+            font-size: 0.8em; /* Smaller font for more content */
             border: 1px solid #ccc;
             background-color: #fff;
             padding: 5px;
             box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
-            white-space: pre; /* Preserve whitespace and newlines */
-            overflow-wrap: break-word; /* Wrap long lines if necessary */
-            resize: vertical; /* Allow vertical resizing */
+            white-space: pre;
+            overflow-wrap: normal; /* Allow horizontal scroll */
+            overflow: auto; /* Enable scrollbars */
+            resize: vertical;
         }
     </style>
 </head>
 <body>
 
-    <h1>Granular Browser Capability Test (Text Log - Debug)</h1>
+    <h1>Exhaustive Method Presence Tester (Text Log)</h1>
     <div id="info">
         <strong>User Agent:</strong> <span id="userAgent">?</span><br>
         <strong>Platform:</strong> <span id="platform">?</span><br>
         <strong>Language:</strong> <span id="language">?</span><br>
+        <p><em>Note: This checks for the presence of methods (typeof === 'function'). It does not guarantee full spec compliance or performance. Output will be verbose.</em></p>
     </div>
 
     <label for="resultsLog">Test Results Log:</label>
     <textarea id="resultsLog" readonly>Initializing script...</textarea>
 
     <script>
-        // --- Test Infrastructure ---
+        // --- Test Infrastructure (Includes Setup Stages from previous version) ---
         (function() {
             // --- Stage 1: Get Essential Elements and Basic Logging ---
             let resultsLog = null;
@@ -68,25 +70,20 @@
             try {
                 resultsLog = document.getElementById('resultsLog');
                 if (!resultsLog) {
-                    // If we can't even get the textarea, something is fundamentally wrong
-                    // We can't log to it, maybe try an alert (might not work on Kindle)
                     try { alert("ERROR: Cannot find resultsLog textarea!"); } catch(e){}
                     criticalError = true;
-                    // Try changing body background as a visual cue if textarea fails
                     document.body.style.backgroundColor = 'red';
-                    return; // Stop execution
+                    return;
                 }
-                // We have the textarea, update it immediately
                 resultsLog.value = initialLogOutput;
 
-                // Try getting other elements
                 const userAgentSpan = document.getElementById('userAgent');
                 const platformSpan = document.getElementById('platform');
                 const languageSpan = document.getElementById('language');
 
                 // --- Stage 2: Populate Basic Browser Info ---
                 initialLogOutput += "Populating basic info...\n";
-                resultsLog.value = initialLogOutput; // Update progress
+                resultsLog.value = initialLogOutput;
 
                 let ua = 'N/A', pf = 'N/A', lg = 'N/A';
                 try { ua = navigator.userAgent || 'N/A'; } catch(e){ ua = 'Error accessing userAgent'; }
@@ -100,39 +97,34 @@
                 initialLogOutput += `User Agent: ${ua}\n`;
                 initialLogOutput += `Platform: ${pf}\n`;
                 initialLogOutput += `Language: ${lg}\n\n`;
-                resultsLog.value = initialLogOutput; // Update with populated info
+                resultsLog.value = initialLogOutput;
 
             } catch (e) {
-                // Catch errors during the *initial setup phase*
                 criticalError = true;
                 const errorMsg = `CRITICAL SETUP ERROR:\nName: ${e.name}\nMessage: ${e.message}\n${e.stack ? 'Stack:\n' + e.stack : ''}\n\n`;
-                if (resultsLog) {
-                    resultsLog.value = initialLogOutput + errorMsg;
-                } else {
-                    // Fallback if textarea wasn't found
-                    try { alert(errorMsg); } catch(alertErr){}
-                     document.body.style.backgroundColor = 'orange'; // Different color for setup error
-                }
-                return; // Stop if setup fails critically
+                if (resultsLog) { resultsLog.value = initialLogOutput + errorMsg; }
+                else { try { alert(errorMsg); } catch(alertErr){} document.body.style.backgroundColor = 'orange'; }
+                return;
             }
 
-            // --- Stage 3: Define Test Functions (if setup was successful) ---
-            let logOutput = initialLogOutput; // Continue logging from initial info
+            // --- Stage 3: Define Test Functions ---
+            let logOutput = initialLogOutput;
 
             function logHeader(title) {
                 if (criticalError) return;
                 logOutput += `\n--- ${title.toUpperCase()} ---\n`;
-                resultsLog.value = logOutput; // Update immediately
+                resultsLog.value = logOutput;
             }
 
             function logSubHeader(title) {
                 if (criticalError) return;
-                logOutput += `  ${title}:\n`;
+                logOutput += `\n  ${title}:\n`; // Add newline before subheader for spacing
                 resultsLog.value = logOutput;
             }
 
+             // Generic result logger (can be used by other checks too)
             function logResult(featureName, status, details = '') {
-                if (criticalError) return;
+                 if (criticalError) return;
                 let statusText = 'Unknown';
                 try {
                     if (typeof status === 'boolean') {
@@ -140,7 +132,7 @@
                     } else if (status === null || status === undefined) {
                         statusText = 'No';
                     } else if (typeof status === 'string') {
-                        statusText = status;
+                        statusText = status; // Pass through strings like 'Partial', 'Error', etc.
                     } else if (typeof status === 'number') {
                         statusText = status.toString();
                     }
@@ -151,63 +143,55 @@
                     }
                     logOutput += `\n`;
                     resultsLog.value = logOutput;
-                    // Avoid scrolling automatically, might be slow/problematic
-                    // resultsLog.scrollTop = resultsLog.scrollHeight;
                 } catch (logError) {
-                    // Prevent logging errors from stopping the whole process
                     logOutput += `    * Error logging result for ${featureName}: ${logError.message} *\n`;
                     resultsLog.value = logOutput;
                 }
             }
 
-            function check(fn) {
-                try {
-                    const result = fn();
-                    // !!result ensures false, 0, '', null, undefined become false
-                    // and other values (true, 1, "hello", objects) become true
-                    return !!result;
-                } catch (e) {
-                    // Log check failures subtly if needed for debugging, but return false
-                    // console.log(`Check failed: ${fn.toString().substring(0, 50)}... Error: ${e.message}`);
-                    return false;
-                }
-            }
+            // Specific helper to check if a property exists on an object AND is a function
+            function logMethodPresence(baseObject, methodName, objectDisplayName = '') {
+                if (criticalError) return;
+                let objectToTest = null;
+                let displayName = objectDisplayName || (baseObject ? baseObject.constructor.name : 'Unknown');
 
-            function hasProp(obj, prop) {
-                 // Explicitly check for null/undefined obj first
-                if (typeof obj === 'undefined' || obj === null) {
-                    return false;
-                }
-                try {
-                    return prop in obj;
-                } catch (e) {
-                    // Accessing properties on certain host objects might throw
-                    return false;
-                }
-            }
-
-             function supportsCSS(property, value = 'inherit') {
                  try {
-                    if (typeof CSS !== 'undefined' && CSS.supports) {
-                        if (CSS.supports(property, value)) return true;
-                        if (CSS.supports(`(${property}: ${value})`)) return true;
-                        if (value !== 'inherit' && (CSS.supports(property, 'inherit') || CSS.supports(`(${property}: inherit)`))) return 'Yes (prop only)';
-                    }
-                     // Fallback, ensure body.style exists
-                     if (document.body && document.body.style) {
-                         const style = document.body.style;
-                         if (property in style) return 'Yes (style prop)';
-                         const capitalized = property.charAt(0).toUpperCase() + property.slice(1);
-                         if (`Webkit${capitalized}` in style) return 'Yes (Webkit)';
-                         if (`Moz${capitalized}` in style) return 'Yes (Moz)';
-                         if (`ms${capitalized}` in style) return 'Yes (ms)';
-                         if (`O${capitalized}` in style) return 'Yes (O)';
+                     // Handle cases where baseObject might be null/undefined or a prototype
+                     if (typeof baseObject === 'undefined' || baseObject === null) {
+                         logResult(`${displayName}.${methodName}`, false, "Base object undefined/null");
+                         return;
                      }
+                     objectToTest = baseObject; // Assume it's the object itself
+
+                     let isFunction = false;
+                     let errorMsg = '';
+
+                     if (methodName in objectToTest) {
+                         if (typeof objectToTest[methodName] === 'function') {
+                             isFunction = true;
+                         } else {
+                             errorMsg = `Exists, but type is ${typeof objectToTest[methodName]}`;
+                         }
+                     } else {
+                         errorMsg = "Not found";
+                     }
+
+                     logResult(`${displayName}.${methodName}`, isFunction, errorMsg);
+
                  } catch (e) {
-                     // CSS.supports or style access might throw in edge cases
-                     return false;
+                     logResult(`${displayName}.${methodName}`, false, `Error during check: ${e.message}`);
                  }
-                 return false;
+            }
+
+            // Helper to check if a property exists (not necessarily a function)
+             function hasProp(obj, prop) {
+                 if (typeof obj === 'undefined' || obj === null) return false;
+                 try { return prop in obj; } catch (e) { return false; }
+             }
+
+            // General check function (for non-method features)
+             function check(fn) {
+                 try { return !!fn(); } catch (e) { return false; }
              }
 
             // --- Stage 4: Define the Main Test Runner ---
@@ -218,270 +202,1042 @@
                      return;
                 }
 
-                logOutput += "Starting detailed tests...\n";
-                resultsLog.value = logOutput; // Update
+                logOutput += "Starting detailed method presence tests...\n";
+                resultsLog.value = logOutput;
 
-                // Wrap all tests in a try-catch to catch unexpected errors during testing
                 try {
-                    logHeader("Core JavaScript & ES Features");
-                    logSubHeader("ES5 / Basic");
-                    logResult("Basic JS Execution", true); // If we got here, basic JS works
-                    logResult("JSON Parsing (JSON.parse)", check(() => typeof JSON !== 'undefined' && typeof JSON.parse === 'function'));
-                    logResult("Strict Mode ('use strict')", check(() => { try { Function("'use strict'; return this;")(); return true; } catch(e){ return false; }}));
-                    logResult("Object.defineProperty", check(() => typeof Object.defineProperty === 'function'));
+                    // ========================================
+                    // Core JavaScript Objects & Methods
+                    // ========================================
+                    logHeader("Core JavaScript");
 
-                    logSubHeader("ES6 / ES2015");
-                    logResult("let / const", check(() => { try { eval("let a = 1; const b = 2;"); return true; } catch (e) { return false; } }));
-                    logResult("Arrow Functions", check(() => { try { eval("const fn = () => true;"); return true; } catch (e) { return false; } }));
-                    logResult("Promises", check(() => typeof Promise !== 'undefined'));
-                    logResult("Map", check(() => typeof Map !== 'undefined'));
-                    logResult("Set", check(() => typeof Set !== 'undefined'));
-                    logResult("Symbol", check(() => typeof Symbol !== 'undefined'));
-                    logResult("Template Literals", check(() => { try { eval("const x = 'test'; `${x}`"); return true; } catch (e) { return false; } }));
-                    logResult("Default Parameters", check(() => { try { eval("function fn(a = true) { return a; };"); return true; } catch (e) { return false; } }));
-                    logResult("Rest Parameters", check(() => { try { eval("function fn(...args) { return args.length; };"); return true; } catch (e) { return false; } }));
-                    logResult("Spread Operator", check(() => { try { eval("const arr1 = [1, 2]; const arr2 = [...arr1, 3];"); return true; } catch (e) { return false; } }));
-                    logResult("Typed Arrays (Uint8Array)", check(() => typeof Uint8Array !== 'undefined'));
+                    logSubHeader("Object Methods");
+                    logMethodPresence(Object, 'assign');
+                    logMethodPresence(Object, 'create');
+                    logMethodPresence(Object, 'defineProperty');
+                    logMethodPresence(Object, 'defineProperties');
+                    logMethodPresence(Object, 'entries');
+                    logMethodPresence(Object, 'freeze');
+                    logMethodPresence(Object, 'fromEntries');
+                    logMethodPresence(Object, 'getOwnPropertyDescriptor');
+                    logMethodPresence(Object, 'getOwnPropertyDescriptors');
+                    logMethodPresence(Object, 'getOwnPropertyNames');
+                    logMethodPresence(Object, 'getOwnPropertySymbols');
+                    logMethodPresence(Object, 'getPrototypeOf');
+                    logMethodPresence(Object, 'hasOwn'); // Newer
+                    logMethodPresence(Object, 'is');
+                    logMethodPresence(Object, 'isExtensible');
+                    logMethodPresence(Object, 'isFrozen');
+                    logMethodPresence(Object, 'isSealed');
+                    logMethodPresence(Object, 'keys');
+                    logMethodPresence(Object, 'preventExtensions');
+                    logMethodPresence(Object, 'seal');
+                    logMethodPresence(Object, 'setPrototypeOf');
+                    logMethodPresence(Object, 'values');
+                    // Object.prototype methods
+                    logMethodPresence(Object.prototype, 'hasOwnProperty', 'Object.prototype');
+                    logMethodPresence(Object.prototype, 'isPrototypeOf', 'Object.prototype');
+                    logMethodPresence(Object.prototype, 'propertyIsEnumerable', 'Object.prototype');
+                    logMethodPresence(Object.prototype, 'toString', 'Object.prototype');
+                    logMethodPresence(Object.prototype, 'valueOf', 'Object.prototype');
+                    logMethodPresence(Object.prototype, '__defineGetter__', 'Object.prototype'); // Non-standard but common
+                    logMethodPresence(Object.prototype, '__defineSetter__', 'Object.prototype'); // Non-standard but common
+                    logMethodPresence(Object.prototype, '__lookupGetter__', 'Object.prototype'); // Non-standard but common
+                    logMethodPresence(Object.prototype, '__lookupSetter__', 'Object.prototype'); // Non-standard but common
 
-                    logSubHeader("ES2016+ (Selected)");
-                    logResult("Array.prototype.includes", check(() => typeof Array.prototype.includes === 'function'));
-                    logResult("Async/Await", check(() => { try { eval("async function test(){ await Promise.resolve(); }"); return true; } catch(e) { return false; } } ));
-                    logResult("Object.values / Object.entries", check(() => typeof Object.values === 'function' && typeof Object.entries === 'function'));
-                    logResult("Optional Chaining (?.)", check(() => { try { eval("const obj = {}; const x = obj?.prop?.subprop;"); return true; } catch (e) { return false; }}));
-                    logResult("Nullish Coalescing (??)", check(() => { try { eval("const x = null ?? 'default';"); return true; } catch (e) { return false; }}));
+                    logSubHeader("Array Methods");
+                    const arrProto = Array.prototype;
+                    logMethodPresence(Array, 'from', 'Array');
+                    logMethodPresence(Array, 'isArray', 'Array');
+                    logMethodPresence(Array, 'of', 'Array');
+                    logMethodPresence(arrProto, 'at', 'Array.prototype');
+                    logMethodPresence(arrProto, 'concat', 'Array.prototype');
+                    logMethodPresence(arrProto, 'copyWithin', 'Array.prototype');
+                    logMethodPresence(arrProto, 'entries', 'Array.prototype');
+                    logMethodPresence(arrProto, 'every', 'Array.prototype');
+                    logMethodPresence(arrProto, 'fill', 'Array.prototype');
+                    logMethodPresence(arrProto, 'filter', 'Array.prototype');
+                    logMethodPresence(arrProto, 'find', 'Array.prototype');
+                    logMethodPresence(arrProto, 'findIndex', 'Array.prototype');
+                    logMethodPresence(arrProto, 'findLast', 'Array.prototype'); // Newer
+                    logMethodPresence(arrProto, 'findLastIndex', 'Array.prototype'); // Newer
+                    logMethodPresence(arrProto, 'flat', 'Array.prototype');
+                    logMethodPresence(arrProto, 'flatMap', 'Array.prototype');
+                    logMethodPresence(arrProto, 'forEach', 'Array.prototype');
+                    logMethodPresence(arrProto, 'includes', 'Array.prototype');
+                    logMethodPresence(arrProto, 'indexOf', 'Array.prototype');
+                    logMethodPresence(arrProto, 'join', 'Array.prototype');
+                    logMethodPresence(arrProto, 'keys', 'Array.prototype');
+                    logMethodPresence(arrProto, 'lastIndexOf', 'Array.prototype');
+                    logMethodPresence(arrProto, 'map', 'Array.prototype');
+                    logMethodPresence(arrProto, 'pop', 'Array.prototype');
+                    logMethodPresence(arrProto, 'push', 'Array.prototype');
+                    logMethodPresence(arrProto, 'reduce', 'Array.prototype');
+                    logMethodPresence(arrProto, 'reduceRight', 'Array.prototype');
+                    logMethodPresence(arrProto, 'reverse', 'Array.prototype');
+                    logMethodPresence(arrProto, 'shift', 'Array.prototype');
+                    logMethodPresence(arrProto, 'slice', 'Array.prototype');
+                    logMethodPresence(arrProto, 'some', 'Array.prototype');
+                    logMethodPresence(arrProto, 'sort', 'Array.prototype');
+                    logMethodPresence(arrProto, 'splice', 'Array.prototype');
+                    logMethodPresence(arrProto, 'toLocaleString', 'Array.prototype');
+                    logMethodPresence(arrProto, 'toReversed', 'Array.prototype'); // Newer (immutable)
+                    logMethodPresence(arrProto, 'toSorted', 'Array.prototype'); // Newer (immutable)
+                    logMethodPresence(arrProto, 'toSpliced', 'Array.prototype'); // Newer (immutable)
+                    logMethodPresence(arrProto, 'toString', 'Array.prototype');
+                    logMethodPresence(arrProto, 'unshift', 'Array.prototype');
+                    logMethodPresence(arrProto, 'values', 'Array.prototype');
+                    logMethodPresence(arrProto, 'with', 'Array.prototype'); // Newer (immutable)
+
+                    logSubHeader("String Methods");
+                    const strProto = String.prototype;
+                    logMethodPresence(String, 'fromCharCode', 'String');
+                    logMethodPresence(String, 'fromCodePoint', 'String');
+                    logMethodPresence(String, 'raw', 'String');
+                    logMethodPresence(strProto, 'at', 'String.prototype');
+                    logMethodPresence(strProto, 'big', 'String.prototype'); // Legacy HTML wrapper
+                    logMethodPresence(strProto, 'blink', 'String.prototype'); // Legacy
+                    logMethodPresence(strProto, 'bold', 'String.prototype'); // Legacy
+                    logMethodPresence(strProto, 'charAt', 'String.prototype');
+                    logMethodPresence(strProto, 'charCodeAt', 'String.prototype');
+                    logMethodPresence(strProto, 'codePointAt', 'String.prototype');
+                    logMethodPresence(strProto, 'concat', 'String.prototype');
+                    logMethodPresence(strProto, 'endsWith', 'String.prototype');
+                    logMethodPresence(strProto, 'fixed', 'String.prototype'); // Legacy
+                    logMethodPresence(strProto, 'fontcolor', 'String.prototype'); // Legacy
+                    logMethodPresence(strProto, 'fontsize', 'String.prototype'); // Legacy
+                    logMethodPresence(strProto, 'includes', 'String.prototype');
+                    logMethodPresence(strProto, 'indexOf', 'String.prototype');
+                    logMethodPresence(strProto, 'isWellFormed', 'String.prototype'); // Newer
+                    logMethodPresence(strProto, 'italics', 'String.prototype'); // Legacy
+                    logMethodPresence(strProto, 'lastIndexOf', 'String.prototype');
+                    logMethodPresence(strProto, 'link', 'String.prototype'); // Legacy
+                    logMethodPresence(strProto, 'localeCompare', 'String.prototype');
+                    logMethodPresence(strProto, 'match', 'String.prototype');
+                    logMethodPresence(strProto, 'matchAll', 'String.prototype');
+                    logMethodPresence(strProto, 'normalize', 'String.prototype');
+                    logMethodPresence(strProto, 'padEnd', 'String.prototype');
+                    logMethodPresence(strProto, 'padStart', 'String.prototype');
+                    logMethodPresence(strProto, 'repeat', 'String.prototype');
+                    logMethodPresence(strProto, 'replace', 'String.prototype');
+                    logMethodPresence(strProto, 'replaceAll', 'String.prototype');
+                    logMethodPresence(strProto, 'search', 'String.prototype');
+                    logMethodPresence(strProto, 'slice', 'String.prototype');
+                    logMethodPresence(strProto, 'small', 'String.prototype'); // Legacy
+                    logMethodPresence(strProto, 'split', 'String.prototype');
+                    logMethodPresence(strProto, 'startsWith', 'String.prototype');
+                    logMethodPresence(strProto, 'strike', 'String.prototype'); // Legacy
+                    logMethodPresence(strProto, 'sub', 'String.prototype'); // Legacy
+                    logMethodPresence(strProto, 'substr', 'String.prototype'); // Legacy/Deprecated
+                    logMethodPresence(strProto, 'substring', 'String.prototype');
+                    logMethodPresence(strProto, 'sup', 'String.prototype'); // Legacy
+                    logMethodPresence(strProto, 'toLocaleLowerCase', 'String.prototype');
+                    logMethodPresence(strProto, 'toLocaleUpperCase', 'String.prototype');
+                    logMethodPresence(strProto, 'toLowerCase', 'String.prototype');
+                    logMethodPresence(strProto, 'toString', 'String.prototype');
+                    logMethodPresence(strProto, 'toUpperCase', 'String.prototype');
+                    logMethodPresence(strProto, 'toWellFormed', 'String.prototype'); // Newer
+                    logMethodPresence(strProto, 'trim', 'String.prototype');
+                    logMethodPresence(strProto, 'trimEnd', 'String.prototype'); // Also trimRight
+                    logMethodPresence(strProto, 'trimStart', 'String.prototype'); // Also trimLeft
+                    logMethodPresence(strProto, 'valueOf', 'String.prototype');
+
+                    logSubHeader("Number Methods");
+                    const numProto = Number.prototype;
+                    logMethodPresence(Number, 'isFinite', 'Number');
+                    logMethodPresence(Number, 'isInteger', 'Number');
+                    logMethodPresence(Number, 'isNaN', 'Number');
+                    logMethodPresence(Number, 'isSafeInteger', 'Number');
+                    logMethodPresence(Number, 'parseFloat', 'Number'); // Static on Number
+                    logMethodPresence(Number, 'parseInt', 'Number'); // Static on Number
+                    logMethodPresence(numProto, 'toExponential', 'Number.prototype');
+                    logMethodPresence(numProto, 'toFixed', 'Number.prototype');
+                    logMethodPresence(numProto, 'toLocaleString', 'Number.prototype');
+                    logMethodPresence(numProto, 'toPrecision', 'Number.prototype');
+                    logMethodPresence(numProto, 'toString', 'Number.prototype'); // Takes radix
+                    logMethodPresence(numProto, 'valueOf', 'Number.prototype');
+
+                    logSubHeader("Math Methods");
+                    logMethodPresence(Math, 'abs', 'Math');
+                    logMethodPresence(Math, 'acos', 'Math');
+                    logMethodPresence(Math, 'acosh', 'Math');
+                    logMethodPresence(Math, 'asin', 'Math');
+                    logMethodPresence(Math, 'asinh', 'Math');
+                    logMethodPresence(Math, 'atan', 'Math');
+                    logMethodPresence(Math, 'atanh', 'Math');
+                    logMethodPresence(Math, 'atan2', 'Math');
+                    logMethodPresence(Math, 'cbrt', 'Math');
+                    logMethodPresence(Math, 'ceil', 'Math');
+                    logMethodPresence(Math, 'clz32', 'Math');
+                    logMethodPresence(Math, 'cos', 'Math');
+                    logMethodPresence(Math, 'cosh', 'Math');
+                    logMethodPresence(Math, 'exp', 'Math');
+                    logMethodPresence(Math, 'expm1', 'Math');
+                    logMethodPresence(Math, 'floor', 'Math');
+                    logMethodPresence(Math, 'fround', 'Math');
+                    logMethodPresence(Math, 'hypot', 'Math');
+                    logMethodPresence(Math, 'imul', 'Math');
+                    logMethodPresence(Math, 'log', 'Math');
+                    logMethodPresence(Math, 'log1p', 'Math');
+                    logMethodPresence(Math, 'log10', 'Math');
+                    logMethodPresence(Math, 'log2', 'Math');
+                    logMethodPresence(Math, 'max', 'Math');
+                    logMethodPresence(Math, 'min', 'Math');
+                    logMethodPresence(Math, 'pow', 'Math');
+                    logMethodPresence(Math, 'random', 'Math');
+                    logMethodPresence(Math, 'round', 'Math');
+                    logMethodPresence(Math, 'sign', 'Math');
+                    logMethodPresence(Math, 'sin', 'Math');
+                    logMethodPresence(Math, 'sinh', 'Math');
+                    logMethodPresence(Math, 'sqrt', 'Math');
+                    logMethodPresence(Math, 'tan', 'Math');
+                    logMethodPresence(Math, 'tanh', 'Math');
+                    logMethodPresence(Math, 'trunc', 'Math');
+
+                    logSubHeader("Date Methods");
+                    const dateProto = Date.prototype;
+                    logMethodPresence(Date, 'now', 'Date');
+                    logMethodPresence(Date, 'parse', 'Date');
+                    logMethodPresence(Date, 'UTC', 'Date');
+                    logMethodPresence(dateProto, 'getDate', 'Date.prototype');
+                    logMethodPresence(dateProto, 'getDay', 'Date.prototype');
+                    logMethodPresence(dateProto, 'getFullYear', 'Date.prototype');
+                    logMethodPresence(dateProto, 'getHours', 'Date.prototype');
+                    logMethodPresence(dateProto, 'getMilliseconds', 'Date.prototype');
+                    logMethodPresence(dateProto, 'getMinutes', 'Date.prototype');
+                    logMethodPresence(dateProto, 'getMonth', 'Date.prototype');
+                    logMethodPresence(dateProto, 'getSeconds', 'Date.prototype');
+                    logMethodPresence(dateProto, 'getTime', 'Date.prototype');
+                    logMethodPresence(dateProto, 'getTimezoneOffset', 'Date.prototype');
+                    logMethodPresence(dateProto, 'getUTCDate', 'Date.prototype');
+                    // ... (add all getUTC... methods)
+                    logMethodPresence(dateProto, 'setDate', 'Date.prototype');
+                    // ... (add all set... and setUTC... methods)
+                    logMethodPresence(dateProto, 'toDateString', 'Date.prototype');
+                    logMethodPresence(dateProto, 'toISOString', 'Date.prototype');
+                    logMethodPresence(dateProto, 'toJSON', 'Date.prototype');
+                    logMethodPresence(dateProto, 'toLocaleDateString', 'Date.prototype');
+                    logMethodPresence(dateProto, 'toLocaleString', 'Date.prototype');
+                    logMethodPresence(dateProto, 'toLocaleTimeString', 'Date.prototype');
+                    logMethodPresence(dateProto, 'toString', 'Date.prototype');
+                    logMethodPresence(dateProto, 'toTimeString', 'Date.prototype');
+                    logMethodPresence(dateProto, 'toUTCString', 'Date.prototype');
+                    logMethodPresence(dateProto, 'valueOf', 'Date.prototype');
+
+                    logSubHeader("JSON Methods");
+                    logMethodPresence(JSON, 'parse', 'JSON');
+                    logMethodPresence(JSON, 'stringify', 'JSON');
+
+                    logSubHeader("RegExp Methods");
+                    const rxProto = RegExp.prototype;
+                    logMethodPresence(rxProto, 'exec', 'RegExp.prototype');
+                    logMethodPresence(rxProto, 'test', 'RegExp.prototype');
+                    logMethodPresence(rxProto, 'toString', 'RegExp.prototype');
+                    // Properties like source, flags, global, etc., are not methods
+
+                    logSubHeader("Function Methods");
+                    const fnProto = Function.prototype;
+                    logMethodPresence(fnProto, 'apply', 'Function.prototype');
+                    logMethodPresence(fnProto, 'bind', 'Function.prototype');
+                    logMethodPresence(fnProto, 'call', 'Function.prototype');
+                    logMethodPresence(fnProto, 'toString', 'Function.prototype');
+
+                    // ES6+ Collections
+                    logSubHeader("Map Methods");
+                    if (typeof Map !== 'undefined') {
+                        logMethodPresence(Map.prototype, 'clear', 'Map.prototype');
+                        logMethodPresence(Map.prototype, 'delete', 'Map.prototype');
+                        logMethodPresence(Map.prototype, 'entries', 'Map.prototype');
+                        logMethodPresence(Map.prototype, 'forEach', 'Map.prototype');
+                        logMethodPresence(Map.prototype, 'get', 'Map.prototype');
+                        logMethodPresence(Map.prototype, 'has', 'Map.prototype');
+                        logMethodPresence(Map.prototype, 'keys', 'Map.prototype');
+                        logMethodPresence(Map.prototype, 'set', 'Map.prototype');
+                        logMethodPresence(Map.prototype, 'values', 'Map.prototype');
+                    } else { logResult('Map Object', false); }
+
+                    logSubHeader("Set Methods");
+                     if (typeof Set !== 'undefined') {
+                        logMethodPresence(Set.prototype, 'add', 'Set.prototype');
+                        logMethodPresence(Set.prototype, 'clear', 'Set.prototype');
+                        logMethodPresence(Set.prototype, 'delete', 'Set.prototype');
+                        logMethodPresence(Set.prototype, 'entries', 'Set.prototype');
+                        logMethodPresence(Set.prototype, 'forEach', 'Set.prototype');
+                        logMethodPresence(Set.prototype, 'has', 'Set.prototype');
+                        logMethodPresence(Set.prototype, 'keys', 'Set.prototype');
+                        logMethodPresence(Set.prototype, 'values', 'Set.prototype');
+                    } else { logResult('Set Object', false); }
+
+                     logSubHeader("WeakMap Methods");
+                     if (typeof WeakMap !== 'undefined') {
+                        logMethodPresence(WeakMap.prototype, 'delete', 'WeakMap.prototype');
+                        logMethodPresence(WeakMap.prototype, 'get', 'WeakMap.prototype');
+                        logMethodPresence(WeakMap.prototype, 'has', 'WeakMap.prototype');
+                        logMethodPresence(WeakMap.prototype, 'set', 'WeakMap.prototype');
+                     } else { logResult('WeakMap Object', false); }
+
+                     logSubHeader("WeakSet Methods");
+                     if (typeof WeakSet !== 'undefined') {
+                         logMethodPresence(WeakSet.prototype, 'add', 'WeakSet.prototype');
+                         logMethodPresence(WeakSet.prototype, 'delete', 'WeakSet.prototype');
+                         logMethodPresence(WeakSet.prototype, 'has', 'WeakSet.prototype');
+                    } else { logResult('WeakSet Object', false); }
+
+                    // Promises
+                    logSubHeader("Promise Methods");
+                    if (typeof Promise !== 'undefined') {
+                        logMethodPresence(Promise, 'all', 'Promise');
+                        logMethodPresence(Promise, 'allSettled', 'Promise');
+                        logMethodPresence(Promise, 'any', 'Promise');
+                        logMethodPresence(Promise, 'race', 'Promise');
+                        logMethodPresence(Promise, 'reject', 'Promise');
+                        logMethodPresence(Promise, 'resolve', 'Promise');
+                        logMethodPresence(Promise.prototype, 'then', 'Promise.prototype');
+                        logMethodPresence(Promise.prototype, 'catch', 'Promise.prototype');
+                        logMethodPresence(Promise.prototype, 'finally', 'Promise.prototype');
+                    } else { logResult('Promise Object', false); }
+
+                    // Intl (Internationalization)
+                    logSubHeader("Intl Methods");
+                    if (typeof Intl !== 'undefined') {
+                        logMethodPresence(Intl, 'getCanonicalLocales', 'Intl');
+                        // Check constructors
+                        logResult('Intl.Collator', typeof Intl.Collator === 'function');
+                        logResult('Intl.DateTimeFormat', typeof Intl.DateTimeFormat === 'function');
+                        logResult('Intl.DisplayNames', typeof Intl.DisplayNames === 'function');
+                        logResult('Intl.ListFormat', typeof Intl.ListFormat === 'function');
+                        logResult('Intl.Locale', typeof Intl.Locale === 'function');
+                        logResult('Intl.NumberFormat', typeof Intl.NumberFormat === 'function');
+                        logResult('Intl.PluralRules', typeof Intl.PluralRules === 'function');
+                        logResult('Intl.RelativeTimeFormat', typeof Intl.RelativeTimeFormat === 'function');
+                        logResult('Intl.Segmenter', typeof Intl.Segmenter === 'function'); // Newer
+
+                        // Check some prototype methods
+                        if (Intl.DateTimeFormat) logMethodPresence(Intl.DateTimeFormat.prototype, 'format', 'Intl.DateTimeFormat.prototype');
+                        if (Intl.DateTimeFormat) logMethodPresence(Intl.DateTimeFormat.prototype, 'formatToParts', 'Intl.DateTimeFormat.prototype');
+                        if (Intl.NumberFormat) logMethodPresence(Intl.NumberFormat.prototype, 'format', 'Intl.NumberFormat.prototype');
+                        if (Intl.NumberFormat) logMethodPresence(Intl.NumberFormat.prototype, 'formatToParts', 'Intl.NumberFormat.prototype');
+                        // ... could add more for other Intl objects
+                    } else { logResult('Intl Object', false); }
 
 
-                    logHeader("HTML5 Elements");
-                    const testElement = (tag) => check(() => {
-                        const el = document.createElement(tag);
-                        // More robust check: Ensure it's an HTMLElement and not HTMLUnknownElement
-                        return (el instanceof HTMLElement && !(el instanceof HTMLUnknownElement));
-                    });
-                    logResult("<canvas>", testElement('canvas'));
-                    logResult("<audio>", testElement('audio'));
-                    logResult("<video>", testElement('video'));
-                    logResult("<details> & <summary>", testElement('details') && testElement('summary'));
-                    logResult("<meter>", testElement('meter'));
-                    logResult("<progress>", testElement('progress'));
-                    logResult("<template>", testElement('template'));
-                    logResult("<svg> (inline)", check(() => !!(document.createElementNS && document.createElementNS('http://www.w3.org/2000/svg', 'svg').createSVGRect)));
-                    logResult("Attribute: hidden", check(() => document.createElement('div').hidden !== undefined)); // Check property existence
-                    logResult("Attribute: data-*", check(() => { try { const el = document.createElement('div'); el.setAttribute('data-test', 'val'); return el.dataset.test === 'val'; } catch(e) { return false; }}));
+                    // ========================================
+                    // Browser APIs (Window, Document, Navigator, etc.)
+                    // ========================================
+                    logHeader("Browser Environment (Window, Document, Navigator)");
 
+                    logSubHeader("Global Scope / Window Methods");
+                    logMethodPresence(window, 'alert', 'window');
+                    logMethodPresence(window, 'atob', 'window');
+                    logMethodPresence(window, 'blur', 'window');
+                    logMethodPresence(window, 'btoa', 'window');
+                    logMethodPresence(window, 'clearInterval', 'window');
+                    logMethodPresence(window, 'clearTimeout', 'window');
+                    logMethodPresence(window, 'close', 'window');
+                    logMethodPresence(window, 'confirm', 'window');
+                    logMethodPresence(window, 'createImageBitmap', 'window');
+                    logMethodPresence(window, 'fetch', 'window');
+                    logMethodPresence(window, 'find', 'window'); // Non-standard but common
+                    logMethodPresence(window, 'focus', 'window');
+                    logMethodPresence(window, 'getComputedStyle', 'window');
+                    logMethodPresence(window, 'getSelection', 'window');
+                    logMethodPresence(window, 'matchMedia', 'window');
+                    logMethodPresence(window, 'moveBy', 'window');
+                    logMethodPresence(window, 'moveTo', 'window');
+                    logMethodPresence(window, 'open', 'window');
+                    logMethodPresence(window, 'postMessage', 'window');
+                    logMethodPresence(window, 'print', 'window');
+                    logMethodPresence(window, 'prompt', 'window');
+                    logMethodPresence(window, 'requestAnimationFrame', 'window');
+                    logMethodPresence(window, 'cancelAnimationFrame', 'window');
+                    logMethodPresence(window, 'requestIdleCallback', 'window'); // Less common
+                    logMethodPresence(window, 'cancelIdleCallback', 'window'); // Less common
+                    logMethodPresence(window, 'resizeBy', 'window');
+                    logMethodPresence(window, 'resizeTo', 'window');
+                    logMethodPresence(window, 'scroll', 'window');
+                    logMethodPresence(window, 'scrollBy', 'window');
+                    logMethodPresence(window, 'scrollTo', 'window');
+                    logMethodPresence(window, 'setInterval', 'window');
+                    logMethodPresence(window, 'setTimeout', 'window');
+                    logMethodPresence(window, 'stop', 'window'); // Stops loading
+                    // Encoding/Decoding
+                    logMethodPresence(window, 'decodeURI', 'window');
+                    logMethodPresence(window, 'decodeURIComponent', 'window');
+                    logMethodPresence(window, 'encodeURI', 'window');
+                    logMethodPresence(window, 'encodeURIComponent', 'window');
+                    // Deprecated / Non-standard encoding
+                    logMethodPresence(window, 'escape', 'window');
+                    logMethodPresence(window, 'unescape', 'window');
 
-                    logHeader("Forms");
-                    const testInputType = (type) => check(() => { try { const i = document.createElement('input'); i.setAttribute('type', type); return i.type === type; } catch(e) {return false;} });
-                    logResult("Input type: color", testInputType('color'));
-                    logResult("Input type: date", testInputType('date'));
-                    logResult("Input type: datetime-local", testInputType('datetime-local'));
-                    logResult("Input type: email", testInputType('email'));
-                    logResult("Input type: month", testInputType('month'));
-                    logResult("Input type: number", testInputType('number'));
-                    logResult("Input type: range", testInputType('range'));
-                    logResult("Input type: search", testInputType('search'));
-                    logResult("Input type: tel", testInputType('tel'));
-                    logResult("Input type: time", testInputType('time'));
-                    logResult("Input type: url", testInputType('url'));
-                    logResult("Input type: week", testInputType('week'));
-                    logResult("Attribute: placeholder", check(() => 'placeholder' in document.createElement('input')));
-                    logResult("Attribute: required", check(() => 'required' in document.createElement('input')));
-                    logResult("Attribute: pattern", check(() => 'pattern' in document.createElement('input')));
-                    logResult("Attribute: autofocus", check(() => 'autofocus' in document.createElement('input')));
-                    logResult("Form Validation API (checkValidity)", check(() => 'checkValidity' in document.createElement('form')));
+                    logSubHeader("Document Methods");
+                    if (typeof document !== 'undefined') {
+                        logMethodPresence(document, 'adoptNode', 'document');
+                        logMethodPresence(document, 'append', 'document'); // Newer DOM mutation
+                        logMethodPresence(document, 'caretRangeFromPoint', 'document'); // Or caretPositionFromPoint
+                        logMethodPresence(document, 'createAttribute', 'document');
+                        logMethodPresence(document, 'createComment', 'document');
+                        logMethodPresence(document, 'createDocumentFragment', 'document');
+                        logMethodPresence(document, 'createElement', 'document');
+                        logMethodPresence(document, 'createElementNS', 'document');
+                        logMethodPresence(document, 'createEvent', 'document'); // Legacy event creation
+                        logMethodPresence(document, 'createNodeIterator', 'document');
+                        logMethodPresence(document, 'createRange', 'document');
+                        logMethodPresence(document, 'createTextNode', 'document');
+                        logMethodPresence(document, 'createTreeWalker', 'document');
+                        logMethodPresence(document, 'elementFromPoint', 'document');
+                        logMethodPresence(document, 'elementsFromPoint', 'document'); // Plural version
+                        logMethodPresence(document, 'execCommand', 'document'); // Deprecated
+                        logMethodPresence(document, 'exitFullscreen', 'document'); // May have vendor prefix
+                        logMethodPresence(document, 'exitPointerLock', 'document');
+                        logMethodPresence(document, 'getElementById', 'document');
+                        logMethodPresence(document, 'getElementsByClassName', 'document');
+                        logMethodPresence(document, 'getElementsByName', 'document');
+                        logMethodPresence(document, 'getElementsByTagName', 'document');
+                        logMethodPresence(document, 'getElementsByTagNameNS', 'document');
+                        logMethodPresence(document, 'getSelection', 'document'); // Same as window.getSelection
+                        logMethodPresence(document, 'hasFocus', 'document');
+                        logMethodPresence(document, 'importNode', 'document');
+                        logMethodPresence(document, 'prepend', 'document'); // Newer DOM mutation
+                        logMethodPresence(document, 'querySelector', 'document');
+                        logMethodPresence(document, 'querySelectorAll', 'document');
+                        logMethodPresence(document, 'registerElement', 'document'); // Deprecated (Custom Elements v0)
+                        // Properties like document.body, document.head etc. aren't methods
+                    } else { logResult('document Object', false); }
 
-                    // --- (Include ALL other test sections here: Graphics, Storage, Connectivity, etc.) ---
-                    // --- (Copy them from the previous version) ---
+                    logSubHeader("Navigator Methods & Properties");
+                     if (typeof navigator !== 'undefined') {
+                        logMethodPresence(navigator, 'canShare', 'navigator'); // Web Share API
+                        logMethodPresence(navigator, 'clearAppBadge', 'navigator'); // Badging API
+                        logMethodPresence(navigator, 'getBattery', 'navigator'); // Battery Status API
+                        logMethodPresence(navigator, 'getGamepads', 'navigator'); // Gamepad API
+                        logMethodPresence(navigator, 'getUserMedia', 'navigator'); // Deprecated getUserMedia
+                        logMethodPresence(navigator, 'javaEnabled', 'navigator'); // Legacy plugin check
+                        logMethodPresence(navigator, 'registerProtocolHandler', 'navigator');
+                        logMethodPresence(navigator, 'requestMediaKeySystemAccess', 'navigator'); // EME
+                        logMethodPresence(navigator, 'sendBeacon', 'navigator');
+                        logMethodPresence(navigator, 'setAppBadge', 'navigator'); // Badging API
+                        logMethodPresence(navigator, 'share', 'navigator'); // Web Share API
+                        logMethodPresence(navigator, 'vibrate', 'navigator'); // Vibration API
+                        // Objects on navigator
+                        logResult('navigator.clipboard', typeof navigator.clipboard !== 'undefined');
+                        logResult('navigator.connection', typeof navigator.connection !== 'undefined'); // Network Info API
+                        logResult('navigator.credentials', typeof navigator.credentials !== 'undefined'); // Credential Management
+                        logResult('navigator.geolocation', typeof navigator.geolocation !== 'undefined');
+                        logResult('navigator.locks', typeof navigator.locks !== 'undefined'); // Web Locks API
+                        logResult('navigator.mediaDevices', typeof navigator.mediaDevices !== 'undefined');
+                        logResult('navigator.permissions', typeof navigator.permissions !== 'undefined'); // Permissions API
+                        logResult('navigator.serviceWorker', typeof navigator.serviceWorker !== 'undefined');
+                        logResult('navigator.storage', typeof navigator.storage !== 'undefined'); // Storage Manager API
+                        logResult('navigator.usb', typeof navigator.usb !== 'undefined'); // WebUSB
+                        logResult('navigator.wakeLock', typeof navigator.wakeLock !== 'undefined'); // Screen Wake Lock API
+                        logResult('navigator.xr', typeof navigator.xr !== 'undefined'); // WebXR
 
-                    logHeader("Graphics & Media");
-                    logSubHeader("Canvas 2D");
-                    let canvas = null, ctx2d = null;
-                    try { canvas = document.createElement('canvas'); } catch(e){}
-                    if (canvas && typeof canvas.getContext === 'function') {
-                        try { ctx2d = canvas.getContext('2d'); } catch(e){}
-                    }
-                    logResult("2D Context", !!ctx2d);
-                    if (ctx2d) {
-                        logResult("Method: fillText", hasProp(ctx2d, 'fillText'));
-                        logResult("Method: measureText", hasProp(ctx2d, 'measureText'));
-                        logResult("Method: drawImage", hasProp(ctx2d, 'drawImage'));
-                        logResult("Method: ellipse", hasProp(ctx2d, 'ellipse')); // Newer method
-                        logResult("Feature: Path2D", check(() => typeof Path2D !== 'undefined'));
-                        logResult("Feature: ImageData", check(() => typeof ImageData !== 'undefined'));
-                        const imageSmoothing = check(() => hasProp(ctx2d, 'imageSmoothingEnabled') || hasProp(ctx2d, 'webkitImageSmoothingEnabled') || hasProp(ctx2d, 'mozImageSmoothingEnabled') || hasProp(ctx2d, 'msImageSmoothingEnabled'));
-                        logResult("Feature: Image Smoothing", imageSmoothing);
-                    }
-
-                    logSubHeader("WebGL");
-                    const getGlContext = (version) => check(() => {
-                        const c = document.createElement('canvas');
-                        try { return c.getContext(version) || c.getContext(`experimental-${version}`); } catch (e) { return null; }
-                    });
-                    const hasWebGL1 = getGlContext('webgl');
-                    const hasWebGL2 = getGlContext('webgl2');
-                    logResult("WebGL 1 Context", !!hasWebGL1);
-                    logResult("WebGL 2 Context", !!hasWebGL2);
-
-                    logSubHeader("Audio");
-                    let audio = null;
-                    try { audio = document.createElement('audio'); } catch(e){}
-                    logResult("<audio> Element", !!audio);
-                    if (audio && typeof audio.canPlayType === 'function') {
-                        const canPlayType = (type) => { try { const res = audio.canPlayType(type); return (res === 'probably' || res === 'maybe') ? res : 'No'; } catch(e){ return 'Error'; } };
-                        logResult("Format Check: MP3 (audio/mpeg)", canPlayType('audio/mpeg;'));
-                        logResult("Format Check: AAC (audio/aac)", canPlayType('audio/aac;'));
-                        logResult("Format Check: Ogg Vorbis (audio/ogg; codecs=vorbis)", canPlayType('audio/ogg; codecs="vorbis"'));
-                        logResult("Format Check: Opus (audio/opus) or (audio/ogg; codecs=opus)", canPlayType('audio/opus') || canPlayType('audio/ogg; codecs="opus"'));
-                        logResult("Format Check: WAV (audio/wav; codecs=1)", canPlayType('audio/wav; codecs="1"'));
-                        logResult("Attribute: preload", hasProp(audio, 'preload'));
-                        logResult("Attribute: autoplay", hasProp(audio, 'autoplay'));
-                        logResult("API: playbackRate", hasProp(audio, 'playbackRate'));
-                    }
-                    const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    logResult("Web Audio API (AudioContext)", !!AudioContext);
-                    if (AudioContext) {
-                        let audioCtx = null;
-                        try { audioCtx = new AudioContext(); } catch (e) { logResult("Web Audio API Context Creation", false, `Error: ${e.message}`); }
-                        if (audioCtx) {
-                            logResult("Node: GainNode (createGain)", check(() => typeof audioCtx.createGain === 'function'));
-                            logResult("Node: BufferSource (createBufferSource)", check(() => typeof audioCtx.createBufferSource === 'function'));
-                            logResult("Node: Oscillator (createOscillator)", check(() => typeof audioCtx.createOscillator === 'function'));
-                            logResult("Method: decodeAudioData", check(() => typeof audioCtx.decodeAudioData === 'function'));
-                            if (typeof audioCtx.close === 'function') { try { audioCtx.close(); } catch(e){} }
+                        // Check methods on sub-objects if they exist
+                        if (navigator.clipboard) {
+                            logMethodPresence(navigator.clipboard, 'read', 'navigator.clipboard');
+                            logMethodPresence(navigator.clipboard, 'readText', 'navigator.clipboard');
+                            logMethodPresence(navigator.clipboard, 'write', 'navigator.clipboard');
+                            logMethodPresence(navigator.clipboard, 'writeText', 'navigator.clipboard');
                         }
+                         if (navigator.geolocation) {
+                             logMethodPresence(navigator.geolocation, 'getCurrentPosition', 'navigator.geolocation');
+                             logMethodPresence(navigator.geolocation, 'watchPosition', 'navigator.geolocation');
+                             logMethodPresence(navigator.geolocation, 'clearWatch', 'navigator.geolocation');
+                         }
+                         if (navigator.mediaDevices) {
+                             logMethodPresence(navigator.mediaDevices, 'enumerateDevices', 'navigator.mediaDevices');
+                             logMethodPresence(navigator.mediaDevices, 'getSupportedConstraints', 'navigator.mediaDevices');
+                             logMethodPresence(navigator.mediaDevices, 'getUserMedia', 'navigator.mediaDevices');
+                             logMethodPresence(navigator.mediaDevices, 'getDisplayMedia', 'navigator.mediaDevices'); // Screen capture
+                         }
+                         if (navigator.permissions) {
+                             logMethodPresence(navigator.permissions, 'query', 'navigator.permissions');
+                         }
+                         if (navigator.serviceWorker) {
+                             logMethodPresence(navigator.serviceWorker, 'register', 'navigator.serviceWorker');
+                             logMethodPresence(navigator.serviceWorker, 'getRegistration', 'navigator.serviceWorker');
+                             logMethodPresence(navigator.serviceWorker, 'getRegistrations', 'navigator.serviceWorker');
+                         }
+                         if (navigator.storage) {
+                             logMethodPresence(navigator.storage, 'estimate', 'navigator.storage');
+                             logMethodPresence(navigator.storage, 'persist', 'navigator.storage');
+                             logMethodPresence(navigator.storage, 'persisted', 'navigator.storage');
+                         }
+
+                     } else { logResult('navigator Object', false); }
+
+                    logSubHeader("Screen Methods & Properties");
+                    if (typeof screen !== 'undefined') {
+                        logResult('screen.orientation', typeof screen.orientation !== 'undefined');
+                        if (screen.orientation) {
+                           logMethodPresence(screen.orientation, 'lock', 'screen.orientation');
+                           logMethodPresence(screen.orientation, 'unlock', 'screen.orientation');
+                        }
+                        // Other properties like width, height, availWidth etc. are not methods
+                        // Methods like lockOrientation/unlockOrientation are deprecated/prefixed
+                        logMethodPresence(screen, 'lockOrientation', 'screen'); // Deprecated/Prefixed
+                        logMethodPresence(screen, 'unlockOrientation', 'screen'); // Deprecated/Prefixed
+                    } else { logResult('screen Object', false); }
+
+                    logSubHeader("History Methods");
+                     if (typeof history !== 'undefined') {
+                         logMethodPresence(history, 'back', 'history');
+                         logMethodPresence(history, 'forward', 'history');
+                         logMethodPresence(history, 'go', 'history');
+                         logMethodPresence(history, 'pushState', 'history');
+                         logMethodPresence(history, 'replaceState', 'history');
+                     } else { logResult('history Object', false); }
+
+                    logSubHeader("Location Methods & Properties");
+                     if (typeof location !== 'undefined') {
+                         logMethodPresence(location, 'assign', 'location');
+                         logMethodPresence(location, 'reload', 'location');
+                         logMethodPresence(location, 'replace', 'location');
+                         logMethodPresence(location, 'toString', 'location'); // Often implicit
+                         // Properties like href, host, pathname etc. aren't methods
+                     } else { logResult('location Object', false); }
+
+                     logSubHeader("Performance Methods");
+                     const perf = window.performance || window.mozPerformance || window.msPerformance || window.webkitPerformance;
+                     if (perf) {
+                         logMethodPresence(perf, 'clearMarks', 'performance');
+                         logMethodPresence(perf, 'clearMeasures', 'performance');
+                         logMethodPresence(perf, 'clearResourceTimings', 'performance');
+                         logMethodPresence(perf, 'getEntries', 'performance');
+                         logMethodPresence(perf, 'getEntriesByName', 'performance');
+                         logMethodPresence(perf, 'getEntriesByType', 'performance');
+                         logMethodPresence(perf, 'mark', 'performance');
+                         logMethodPresence(perf, 'measure', 'performance');
+                         logMethodPresence(perf, 'now', 'performance');
+                         logMethodPresence(perf, 'setResourceTimingBufferSize', 'performance');
+                         logMethodPresence(perf, 'toJSON', 'performance');
+                     } else { logResult('performance Object', false); }
+
+                    logSubHeader("Crypto Methods");
+                    if (typeof crypto !== 'undefined') {
+                        logMethodPresence(crypto, 'getRandomValues', 'crypto');
+                        logResult('crypto.subtle', typeof crypto.subtle !== 'undefined'); // SubtleCrypto object
+                        if (crypto.subtle) {
+                            logMethodPresence(crypto.subtle, 'decrypt', 'crypto.subtle');
+                            logMethodPresence(crypto.subtle, 'deriveBits', 'crypto.subtle');
+                            logMethodPresence(crypto.subtle, 'deriveKey', 'crypto.subtle');
+                            logMethodPresence(crypto.subtle, 'digest', 'crypto.subtle');
+                            logMethodPresence(crypto.subtle, 'encrypt', 'crypto.subtle');
+                            logMethodPresence(crypto.subtle, 'exportKey', 'crypto.subtle');
+                            logMethodPresence(crypto.subtle, 'generateKey', 'crypto.subtle');
+                            logMethodPresence(crypto.subtle, 'importKey', 'crypto.subtle');
+                            logMethodPresence(crypto.subtle, 'sign', 'crypto.subtle');
+                            logMethodPresence(crypto.subtle, 'unwrapKey', 'crypto.subtle');
+                            logMethodPresence(crypto.subtle, 'verify', 'crypto.subtle');
+                            logMethodPresence(crypto.subtle, 'wrapKey', 'crypto.subtle');
+                        }
+                         // Older Webkit prefix might exist
+                        logResult('crypto.webkitSubtle', typeof crypto.webkitSubtle !== 'undefined');
+                    } else { logResult('crypto Object', false); }
+
+
+                    // ========================================
+                    // DOM Element & Node Methods
+                    // ========================================
+                    logHeader("DOM Nodes & Elements");
+
+                    logSubHeader("EventTarget Methods");
+                    if (typeof EventTarget !== 'undefined' && EventTarget.prototype) {
+                        logMethodPresence(EventTarget.prototype, 'addEventListener', 'EventTarget.prototype');
+                        logMethodPresence(EventTarget.prototype, 'dispatchEvent', 'EventTarget.prototype');
+                        logMethodPresence(EventTarget.prototype, 'removeEventListener', 'EventTarget.prototype');
+                    } else { logResult('EventTarget.prototype', false); }
+
+                    logSubHeader("Node Methods");
+                     if (typeof Node !== 'undefined' && Node.prototype) {
+                        logMethodPresence(Node.prototype, 'appendChild', 'Node.prototype');
+                        logMethodPresence(Node.prototype, 'cloneNode', 'Node.prototype');
+                        logMethodPresence(Node.prototype, 'compareDocumentPosition', 'Node.prototype');
+                        logMethodPresence(Node.prototype, 'contains', 'Node.prototype');
+                        logMethodPresence(Node.prototype, 'getRootNode', 'Node.prototype');
+                        logMethodPresence(Node.prototype, 'hasChildNodes', 'Node.prototype');
+                        logMethodPresence(Node.prototype, 'insertBefore', 'Node.prototype');
+                        logMethodPresence(Node.prototype, 'isDefaultNamespace', 'Node.prototype');
+                        logMethodPresence(Node.prototype, 'isEqualNode', 'Node.prototype');
+                        logMethodPresence(Node.prototype, 'isSameNode', 'Node.prototype');
+                        logMethodPresence(Node.prototype, 'lookupNamespaceURI', 'Node.prototype');
+                        logMethodPresence(Node.prototype, 'lookupPrefix', 'Node.prototype');
+                        logMethodPresence(Node.prototype, 'normalize', 'Node.prototype');
+                        logMethodPresence(Node.prototype, 'removeChild', 'Node.prototype');
+                        logMethodPresence(Node.prototype, 'replaceChild', 'Node.prototype');
+                        // Properties like childNodes, parentNode etc aren't methods
+                    } else { logResult('Node.prototype', false); }
+
+                    logSubHeader("Element Methods");
+                     if (typeof Element !== 'undefined' && Element.prototype) {
+                        logMethodPresence(Element.prototype, 'after', 'Element.prototype'); // New mutation
+                        logMethodPresence(Element.prototype, 'animate', 'Element.prototype'); // Web Animations API
+                        logMethodPresence(Element.prototype, 'append', 'Element.prototype'); // New mutation
+                        logMethodPresence(Element.prototype, 'attachShadow', 'Element.prototype'); // Shadow DOM
+                        logMethodPresence(Element.prototype, 'before', 'Element.prototype'); // New mutation
+                        logMethodPresence(Element.prototype, 'closest', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'computedStyleMap', 'Element.prototype'); // CSS Typed OM
+                        logMethodPresence(Element.prototype, 'getAttribute', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'getAttributeNS', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'getAttributeNames', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'getAttributeNode', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'getAttributeNodeNS', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'getBoundingClientRect', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'getClientRects', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'getElementsByClassName', 'Element.prototype'); // On Element too
+                        logMethodPresence(Element.prototype, 'getElementsByTagName', 'Element.prototype'); // On Element too
+                        logMethodPresence(Element.prototype, 'getElementsByTagNameNS', 'Element.prototype'); // On Element too
+                        logMethodPresence(Element.prototype, 'hasAttribute', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'hasAttributeNS', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'hasAttributes', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'hasPointerCapture', 'Element.prototype'); // Pointer Events
+                        logMethodPresence(Element.prototype, 'insertAdjacentElement', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'insertAdjacentHTML', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'insertAdjacentText', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'matches', 'Element.prototype'); // Check selector
+                        logMethodPresence(Element.prototype, 'prepend', 'Element.prototype'); // New mutation
+                        logMethodPresence(Element.prototype, 'querySelector', 'Element.prototype'); // On Element too
+                        logMethodPresence(Element.prototype, 'querySelectorAll', 'Element.prototype'); // On Element too
+                        logMethodPresence(Element.prototype, 'releasePointerCapture', 'Element.prototype'); // Pointer Events
+                        logMethodPresence(Element.prototype, 'remove', 'Element.prototype'); // New mutation
+                        logMethodPresence(Element.prototype, 'removeAttribute', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'removeAttributeNS', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'removeAttributeNode', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'replaceChildren', 'Element.prototype'); // New mutation
+                        logMethodPresence(Element.prototype, 'replaceWith', 'Element.prototype'); // New mutation
+                        logMethodPresence(Element.prototype, 'requestFullscreen', 'Element.prototype'); // Check prefixed versions too
+                        logMethodPresence(Element.prototype, 'requestPointerLock', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'scroll', 'Element.prototype'); // New scroll methods
+                        logMethodPresence(Element.prototype, 'scrollBy', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'scrollTo', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'scrollIntoView', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'setAttribute', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'setAttributeNS', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'setAttributeNode', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'setAttributeNodeNS', 'Element.prototype');
+                        logMethodPresence(Element.prototype, 'setPointerCapture', 'Element.prototype'); // Pointer Events
+                        logMethodPresence(Element.prototype, 'toggleAttribute', 'Element.prototype');
+                        // Prefixed versions often exist (webkitMatchesSelector, mozRequestFullScreen, etc.)
+                    } else { logResult('Element.prototype', false); }
+
+                    logSubHeader("HTMLElement Methods");
+                     if (typeof HTMLElement !== 'undefined' && HTMLElement.prototype) {
+                        logMethodPresence(HTMLElement.prototype, 'blur', 'HTMLElement.prototype');
+                        logMethodPresence(HTMLElement.prototype, 'click', 'HTMLElement.prototype');
+                        logMethodPresence(HTMLElement.prototype, 'focus', 'HTMLElement.prototype');
+                        // Properties like style, dataset, innerText aren't methods
+                    } else { logResult('HTMLElement.prototype', false); }
+
+
+                    // ========================================
+                    // Graphics & Media
+                    // ========================================
+                    logHeader("Graphics & Media");
+
+                    logSubHeader("CanvasRenderingContext2D Methods");
+                    let ctx2dProto = null;
+                    try {
+                        const canvas = document.createElement('canvas');
+                        if (canvas && canvas.getContext) {
+                            const ctx = canvas.getContext('2d');
+                            if (ctx) ctx2dProto = Object.getPrototypeOf(ctx);
+                        }
+                    } catch (e) {}
+                    if (ctx2dProto) {
+                        logMethodPresence(ctx2dProto, 'arc', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'arcTo', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'beginPath', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'bezierCurveTo', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'clearRect', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'clip', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'closePath', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'createImageData', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'createLinearGradient', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'createPattern', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'createRadialGradient', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'drawFocusIfNeeded', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'drawImage', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'ellipse', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'fill', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'fillRect', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'fillText', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'getImageData', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'getLineDash', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'isPointInPath', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'isPointInStroke', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'lineTo', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'measureText', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'moveTo', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'putImageData', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'quadraticCurveTo', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'rect', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'resetTransform', 'CanvasRenderingContext2D.prototype'); // Newer
+                        logMethodPresence(ctx2dProto, 'restore', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'rotate', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'save', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'scale', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'setLineDash', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'setTransform', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'stroke', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'strokeRect', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'strokeText', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'transform', 'CanvasRenderingContext2D.prototype');
+                        logMethodPresence(ctx2dProto, 'translate', 'CanvasRenderingContext2D.prototype');
+                    } else { logResult('CanvasRenderingContext2D.prototype', false, "Could not get 2D context"); }
+
+                    logSubHeader("WebGLRenderingContext Methods"); // WebGL 1
+                    let glProto = null;
+                     try {
+                         const canvas = document.createElement('canvas');
+                         if (canvas && canvas.getContext) {
+                             const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                             if (gl) glProto = Object.getPrototypeOf(gl);
+                         }
+                     } catch (e) {}
+                     if (glProto) {
+                        logMethodPresence(glProto, 'activeTexture', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'attachShader', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'bindAttribLocation', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'bindBuffer', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'bindFramebuffer', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'bindRenderbuffer', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'bindTexture', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'blendColor', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'blendEquation', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'blendEquationSeparate', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'blendFunc', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'blendFuncSeparate', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'bufferData', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'bufferSubData', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'checkFramebufferStatus', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'clear', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'clearColor', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'clearDepth', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'clearStencil', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'colorMask', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'compileShader', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'compressedTexImage2D', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'compressedTexSubImage2D', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'copyTexImage2D', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'copyTexSubImage2D', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'createBuffer', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'createFramebuffer', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'createProgram', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'createRenderbuffer', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'createShader', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'createTexture', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'cullFace', 'WebGLRenderingContext.prototype');
+                        logMethodPresence(glProto, 'deleteBuffer', 'WebGLRenderingContext.prototype');
+                        // ... (Add MANY more WebGL 1 methods: deleteFramebuffer, deleteProgram, deleteRenderbuffer, deleteShader, deleteTexture, depthFunc, depthMask, depthRange, detachShader, disable, disableVertexAttribArray, drawArrays, drawElements, enable, enableVertexAttribArray, finish, flush, framebufferRenderbuffer, framebufferTexture2D, frontFace, generateMipmap, getActiveAttrib, getActiveUniform, getAttachedShaders, getAttribLocation, getBufferParameter, getContextAttributes, getError, getExtension, getFramebufferAttachmentParameter, getParameter, getProgramParameter, getProgramInfoLog, getRenderbufferParameter, getShaderParameter, getShaderPrecisionFormat, getShaderInfoLog, getShaderSource, getSupportedExtensions, getTexParameter, getUniform, getUniformLocation, getVertexAttrib, getVertexAttribOffset, hint, isBuffer, isContextLost, isEnabled, isFramebuffer, isProgram, isRenderbuffer, isShader, isTexture, lineWidth, linkProgram, pixelStorei, polygonOffset, readPixels, renderbufferStorage, sampleCoverage, scissor, shaderSource, stencilFunc, stencilFuncSeparate, stencilMask, stencilMaskSeparate, stencilOp, stencilOpSeparate, texImage2D, texParameterf, texParameteri, texSubImage2D, uniform[1-4][fi][v], uniformMatrix[2-4]fv, useProgram, validateProgram, vertexAttrib[1-4]f[v], vertexAttribPointer, viewport )
+                     } else { logResult('WebGLRenderingContext.prototype', false, "Could not get WebGL context"); }
+
+                    // Could optionally add checks for WebGL2RenderingContext if WebGL 1 was found
+
+                    logSubHeader("HTMLMediaElement Methods (Audio/Video)");
+                     let mediaProto = null;
+                     try { mediaProto = HTMLMediaElement.prototype; } catch(e) {}
+                     if (mediaProto) {
+                         logMethodPresence(mediaProto, 'addTextTrack', 'HTMLMediaElement.prototype');
+                         logMethodPresence(mediaProto, 'canPlayType', 'HTMLMediaElement.prototype');
+                         logMethodPresence(mediaProto, 'captureStream', 'HTMLMediaElement.prototype'); // Or mozCaptureStream
+                         logMethodPresence(mediaProto, 'load', 'HTMLMediaElement.prototype');
+                         logMethodPresence(mediaProto, 'pause', 'HTMLMediaElement.prototype');
+                         logMethodPresence(mediaProto, 'play', 'HTMLMediaElement.prototype');
+                         logMethodPresence(mediaProto, 'setMediaKeys', 'HTMLMediaElement.prototype'); // EME
+                         logMethodPresence(mediaProto, 'setSinkId', 'HTMLMediaElement.prototype'); // Audio Output Devices API
+                         // Properties like src, currentTime, duration, volume, muted etc. aren't methods
+                     } else { logResult('HTMLMediaElement.prototype', false, "Assumes Audio/Video elements exist"); }
+
+                    logSubHeader("AudioContext Methods");
+                     const AudioCtxCons = window.AudioContext || window.webkitAudioContext;
+                     if (AudioCtxCons && AudioCtxCons.prototype) {
+                         const audioCtxProto = AudioCtxCons.prototype;
+                         logMethodPresence(audioCtxProto, 'close', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'createAnalyser', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'createBiquadFilter', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'createBuffer', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'createBufferSource', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'createChannelMerger', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'createChannelSplitter', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'createConstantSource', 'AudioContext.prototype'); // Newer nodes
+                         logMethodPresence(audioCtxProto, 'createConvolver', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'createDelay', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'createDynamicsCompressor', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'createGain', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'createIIRFilter', 'AudioContext.prototype'); // Newer nodes
+                         logMethodPresence(audioCtxProto, 'createMediaElementSource', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'createMediaStreamDestination', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'createMediaStreamSource', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'createOscillator', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'createPanner', 'AudioContext.prototype'); // Legacy Panner
+                         logMethodPresence(audioCtxProto, 'createPeriodicWave', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'createScriptProcessor', 'AudioContext.prototype'); // Deprecated
+                         logMethodPresence(audioCtxProto, 'createStereoPanner', 'AudioContext.prototype'); // Newer Panner
+                         logMethodPresence(audioCtxProto, 'createWaveShaper', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'decodeAudioData', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'getOutputTimestamp', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'resume', 'AudioContext.prototype');
+                         logMethodPresence(audioCtxProto, 'suspend', 'AudioContext.prototype');
+                         // Check for AudioWorklet
+                         logResult('AudioContext.audioWorklet', hasProp(audioCtxProto, 'audioWorklet'));
+                     } else { logResult('AudioContext.prototype', false); }
+
+
+                    // ========================================
+                    // Networking & Storage
+                    // ========================================
+                    logHeader("Networking & Storage");
+
+                    logSubHeader("XMLHttpRequest Methods");
+                    if (typeof XMLHttpRequest !== 'undefined' && XMLHttpRequest.prototype) {
+                        logMethodPresence(XMLHttpRequest.prototype, 'abort', 'XMLHttpRequest.prototype');
+                        logMethodPresence(XMLHttpRequest.prototype, 'getAllResponseHeaders', 'XMLHttpRequest.prototype');
+                        logMethodPresence(XMLHttpRequest.prototype, 'getResponseHeader', 'XMLHttpRequest.prototype');
+                        logMethodPresence(XMLHttpRequest.prototype, 'open', 'XMLHttpRequest.prototype');
+                        logMethodPresence(XMLHttpRequest.prototype, 'overrideMimeType', 'XMLHttpRequest.prototype');
+                        logMethodPresence(XMLHttpRequest.prototype, 'send', 'XMLHttpRequest.prototype');
+                        logMethodPresence(XMLHttpRequest.prototype, 'setRequestHeader', 'XMLHttpRequest.prototype');
+                        // Check upload property methods if upload exists
+                         const xhr = new XMLHttpRequest();
+                         if (xhr.upload) {
+                             logResult('XMLHttpRequest.upload object', true);
+                             // Note: upload is an EventTarget, check methods on EventTarget.prototype
+                         } else {
+                              logResult('XMLHttpRequest.upload object', false);
+                         }
+                    } else { logResult('XMLHttpRequest.prototype', false); }
+
+                    logSubHeader("Fetch API Related Methods");
+                    logMethodPresence(window, 'fetch', 'window'); // Already checked under window, but group here too
+                    if (typeof Request !== 'undefined' && Request.prototype) {
+                        logMethodPresence(Request.prototype, 'clone', 'Request.prototype');
+                    } else { logResult('Request.prototype', false); }
+                    if (typeof Response !== 'undefined' && Response.prototype) {
+                        logMethodPresence(Response.prototype, 'arrayBuffer', 'Response.prototype');
+                        logMethodPresence(Response.prototype, 'blob', 'Response.prototype');
+                        logMethodPresence(Response.prototype, 'clone', 'Response.prototype');
+                        logMethodPresence(Response.prototype, 'formData', 'Response.prototype');
+                        logMethodPresence(Response.prototype, 'json', 'Response.prototype');
+                        logMethodPresence(Response.prototype, 'text', 'Response.prototype');
+                        // Static methods
+                        logMethodPresence(Response, 'error', 'Response');
+                        logMethodPresence(Response, 'redirect', 'Response');
+                    } else { logResult('Response.prototype', false); }
+                     if (typeof Headers !== 'undefined' && Headers.prototype) {
+                        logMethodPresence(Headers.prototype, 'append', 'Headers.prototype');
+                        logMethodPresence(Headers.prototype, 'delete', 'Headers.prototype');
+                        logMethodPresence(Headers.prototype, 'entries', 'Headers.prototype');
+                        logMethodPresence(Headers.prototype, 'forEach', 'Headers.prototype');
+                        logMethodPresence(Headers.prototype, 'get', 'Headers.prototype');
+                        logMethodPresence(Headers.prototype, 'has', 'Headers.prototype');
+                        logMethodPresence(Headers.prototype, 'keys', 'Headers.prototype');
+                        logMethodPresence(Headers.prototype, 'set', 'Headers.prototype');
+                        logMethodPresence(Headers.prototype, 'values', 'Headers.prototype');
+                    } else { logResult('Headers.prototype', false); }
+                    logResult('AbortController', typeof AbortController !== 'undefined');
+                    if (typeof AbortController !== 'undefined') {
+                         logMethodPresence(AbortController.prototype, 'abort', 'AbortController.prototype');
                     }
 
-                    logSubHeader("Video");
-                    let video = null;
-                    try { video = document.createElement('video'); } catch(e){}
-                    logResult("<video> Element", !!video);
-                    if (video && typeof video.canPlayType === 'function') {
-                        const canPlayType = (type) => { try { const res = video.canPlayType(type); return (res === 'probably' || res === 'maybe') ? res : 'No'; } catch(e){ return 'Error'; } };
-                        logResult("Format Check: H.264 (video/mp4; codecs=avc1...)", canPlayType('video/mp4; codecs="avc1.42E01E"') || canPlayType('video/mp4; codecs="avc1.64001F"'));
-                        logResult("Format Check: VP8 + Vorbis (video/webm; codecs=vp8,vorbis)", canPlayType('video/webm; codecs="vp8, vorbis"'));
-                        logResult("Format Check: VP9 + Opus (video/webm; codecs=vp9,opus)", canPlayType('video/webm; codecs="vp9, opus"'));
-                        logResult("Format Check: AV1 (video/mp4; codecs=av01...)", canPlayType('video/mp4; codecs="av01.0.05M.08"'));
-                        logResult("Format Check: Ogg Theora + Vorbis", canPlayType('video/ogg; codecs="theora, vorbis"'));
-                        logResult("Attribute: controls", hasProp(video, 'controls'));
-                        logResult("Attribute: poster", hasProp(video, 'poster'));
-                        logResult("API: playbackRate", hasProp(video, 'playbackRate'));
-                        logResult("API: requestFullscreen", check(() => !!(video.requestFullscreen || video.webkitRequestFullscreen || video.mozRequestFullScreen || video.msRequestFullscreen)));
+
+                    logSubHeader("WebSocket Methods");
+                    if (typeof WebSocket !== 'undefined' && WebSocket.prototype) {
+                         logMethodPresence(WebSocket.prototype, 'close', 'WebSocket.prototype');
+                         logMethodPresence(WebSocket.prototype, 'send', 'WebSocket.prototype');
+                    } else { logResult('WebSocket.prototype', false); }
+
+                    logSubHeader("EventSource Methods"); // Server-Sent Events
+                     if (typeof EventSource !== 'undefined' && EventSource.prototype) {
+                          logMethodPresence(EventSource.prototype, 'close', 'EventSource.prototype');
+                     } else { logResult('EventSource.prototype', false); }
+
+
+                    logSubHeader("Storage API Methods (Local/Session)");
+                    if (typeof Storage !== 'undefined' && Storage.prototype) {
+                         // Methods are the same for localStorage and sessionStorage
+                         logMethodPresence(Storage.prototype, 'clear', 'Storage.prototype');
+                         logMethodPresence(Storage.prototype, 'getItem', 'Storage.prototype');
+                         logMethodPresence(Storage.prototype, 'key', 'Storage.prototype');
+                         logMethodPresence(Storage.prototype, 'removeItem', 'Storage.prototype');
+                         logMethodPresence(Storage.prototype, 'setItem', 'Storage.prototype');
+                    } else { logResult('Storage.prototype', false, "Might exist directly on instances"); }
+                    // Check instances directly (more reliable if prototype isn't exposed)
+                    logMethodPresence(window, 'localStorage', 'window');
+                    logMethodPresence(window, 'sessionStorage', 'window');
+                    if (localStorage) {
+                        logMethodPresence(localStorage, 'clear', 'localStorage');
+                        logMethodPresence(localStorage, 'getItem', 'localStorage');
+                        logMethodPresence(localStorage, 'key', 'localStorage');
+                        logMethodPresence(localStorage, 'removeItem', 'localStorage');
+                        logMethodPresence(localStorage, 'setItem', 'localStorage');
+                    }
+                    if (sessionStorage) {
+                         logMethodPresence(sessionStorage, 'clear', 'sessionStorage');
+                         logMethodPresence(sessionStorage, 'getItem', 'sessionStorage');
+                         logMethodPresence(sessionStorage, 'key', 'sessionStorage');
+                         logMethodPresence(sessionStorage, 'removeItem', 'sessionStorage');
+                         logMethodPresence(sessionStorage, 'setItem', 'sessionStorage');
                     }
 
 
-                    logHeader("Storage");
-                    logResult("Local Storage", check(() => { try { localStorage.setItem('__test', '1'); localStorage.removeItem('__test'); return true; } catch(e){ return false; } }));
-                    logResult("Session Storage", check(() => { try { sessionStorage.setItem('__test', '1'); sessionStorage.removeItem('__test'); return true; } catch(e){ return false; } }));
-                    const indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
-                    logResult("IndexedDB", !!indexedDB);
-                    if(indexedDB) {
-                        logResult("IndexedDB: open() method", check(() => typeof indexedDB.open === 'function'));
+                    logSubHeader("IndexedDB Methods");
+                     const idbFactory = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+                     if (idbFactory && Object.getPrototypeOf(idbFactory)) { // Check prototype exists
+                         const idbFactoryProto = Object.getPrototypeOf(idbFactory);
+                         logMethodPresence(idbFactoryProto, 'cmp', 'IDBFactory.prototype');
+                         logMethodPresence(idbFactoryProto, 'databases', 'IDBFactory.prototype'); // Newer, less common
+                         logMethodPresence(idbFactoryProto, 'deleteDatabase', 'IDBFactory.prototype');
+                         logMethodPresence(idbFactoryProto, 'open', 'IDBFactory.prototype');
+                         // Could delve into IDBDatabase.prototype, IDBObjectStore.prototype etc. but gets very verbose
+                     } else { logResult('IndexedDB API (IDBFactory)', !!idbFactory); }
+
+                     logSubHeader("Cache API Methods (Service Worker Cache)");
+                     if (typeof caches !== 'undefined') {
+                        logMethodPresence(caches, 'delete', 'caches');
+                        logMethodPresence(caches, 'has', 'caches');
+                        logMethodPresence(caches, 'keys', 'caches');
+                        logMethodPresence(caches, 'match', 'caches');
+                        logMethodPresence(caches, 'open', 'caches');
+                        // Check Cache.prototype if possible
+                        if (typeof Cache !== 'undefined' && Cache.prototype) {
+                             logMethodPresence(Cache.prototype, 'add', 'Cache.prototype');
+                             logMethodPresence(Cache.prototype, 'addAll', 'Cache.prototype');
+                             logMethodPresence(Cache.prototype, 'delete', 'Cache.prototype');
+                             logMethodPresence(Cache.prototype, 'keys', 'Cache.prototype');
+                             logMethodPresence(Cache.prototype, 'match', 'Cache.prototype');
+                             logMethodPresence(Cache.prototype, 'matchAll', 'Cache.prototype');
+                             logMethodPresence(Cache.prototype, 'put', 'Cache.prototype');
+                        }
+                     } else { logResult('Cache API (caches)', false); }
+
+
+                    // ========================================
+                    // Workers
+                    // ========================================
+                    logHeader("Workers");
+
+                    logSubHeader("Worker Methods (Dedicated)");
+                    if (typeof Worker !== 'undefined' && Worker.prototype) {
+                        logMethodPresence(Worker.prototype, 'postMessage', 'Worker.prototype');
+                        logMethodPresence(Worker.prototype, 'terminate', 'Worker.prototype');
+                        // Is an EventTarget, inherits addEventListener etc.
+                    } else { logResult('Worker.prototype', false); }
+
+                    logSubHeader("SharedWorker Methods");
+                     if (typeof SharedWorker !== 'undefined' && SharedWorker.prototype) {
+                         // SharedWorker itself doesn't have postMessage/terminate, its .port does
+                         logResult('SharedWorker.port property', hasProp(SharedWorker.prototype, 'port'));
+                         // port is a MessagePort, check its methods below
+                     } else { logResult('SharedWorker.prototype', false); }
+
+                     logSubHeader("MessagePort Methods");
+                     if (typeof MessagePort !== 'undefined' && MessagePort.prototype) {
+                         logMethodPresence(MessagePort.prototype, 'close', 'MessagePort.prototype');
+                         logMethodPresence(MessagePort.prototype, 'postMessage', 'MessagePort.prototype');
+                         logMethodPresence(MessagePort.prototype, 'start', 'MessagePort.prototype');
+                          // Is an EventTarget
+                     } else { logResult('MessagePort.prototype', false); }
+
+
+                    logSubHeader("ServiceWorkerRegistration Methods");
+                    if (typeof ServiceWorkerRegistration !== 'undefined' && ServiceWorkerRegistration.prototype) {
+                        logMethodPresence(ServiceWorkerRegistration.prototype, 'getNotifications', 'ServiceWorkerRegistration.prototype');
+                        logMethodPresence(ServiceWorkerRegistration.prototype, 'showNotification', 'ServiceWorkerRegistration.prototype');
+                        logMethodPresence(ServiceWorkerRegistration.prototype, 'unregister', 'ServiceWorkerRegistration.prototype');
+                        logMethodPresence(ServiceWorkerRegistration.prototype, 'update', 'ServiceWorkerRegistration.prototype');
+                         // Properties like installing, waiting, active are objects, not methods
+                    } else { logResult('ServiceWorkerRegistration.prototype', false); }
+
+                    // Could add ServiceWorker.prototype, ServiceWorkerContainer.prototype etc.
+
+
+                    // ========================================
+                    // Events
+                    // ========================================
+                    logHeader("Events");
+
+                    logSubHeader("Event Constructors & Prototypes");
+                    logResult('Event constructor', typeof Event === 'function');
+                    if (typeof Event !== 'undefined' && Event.prototype) {
+                        logMethodPresence(Event.prototype, 'composedPath', 'Event.prototype');
+                        logMethodPresence(Event.prototype, 'preventDefault', 'Event.prototype');
+                        logMethodPresence(Event.prototype, 'stopImmediatePropagation', 'Event.prototype');
+                        logMethodPresence(Event.prototype, 'stopPropagation', 'Event.prototype');
                     }
-                    logResult("Cache API (window.caches)", check(() => typeof window.caches !== 'undefined'));
+                     logResult('CustomEvent constructor', typeof CustomEvent === 'function');
+                     if (typeof CustomEvent !== 'undefined' && CustomEvent.prototype) {
+                         logMethodPresence(CustomEvent.prototype, 'initCustomEvent', 'CustomEvent.prototype'); // Older way
+                     }
+                     logResult('UIEvent constructor', typeof UIEvent === 'function');
+                     logResult('MouseEvent constructor', typeof MouseEvent === 'function');
+                      if (typeof MouseEvent !== 'undefined' && MouseEvent.prototype) {
+                         logMethodPresence(MouseEvent.prototype, 'getModifierState', 'MouseEvent.prototype');
+                         // Properties like clientX, button etc. aren't methods
+                     }
+                     logResult('KeyboardEvent constructor', typeof KeyboardEvent === 'function');
+                     if (typeof KeyboardEvent !== 'undefined' && KeyboardEvent.prototype) {
+                         logMethodPresence(KeyboardEvent.prototype, 'getModifierState', 'KeyboardEvent.prototype');
+                          // Properties like key, code, ctrlKey etc. aren't methods
+                     }
+                     logResult('TouchEvent constructor', typeof TouchEvent === 'function');
+                     // TouchEvent has properties like touches, targetTouches, changedTouches
+                     logResult('PointerEvent constructor', typeof PointerEvent === 'function');
+                     // PointerEvent has properties like pointerId, width, height, pressure, pointerType etc.
+                     logResult('FocusEvent constructor', typeof FocusEvent === 'function');
+                     logResult('WheelEvent constructor', typeof WheelEvent === 'function');
+                     logResult('InputEvent constructor', typeof InputEvent === 'function'); // Newer
+                     logResult('CompositionEvent constructor', typeof CompositionEvent === 'function');
 
 
-                    logHeader("Connectivity & Workers");
-                    logSubHeader("Communication");
-                    logResult("XMLHttpRequest Level 2", check(() => typeof XMLHttpRequest !== 'undefined' && hasProp(new XMLHttpRequest(), 'upload')));
-                    logResult("Fetch API", check(() => typeof fetch === 'function'));
-                    if(check(() => typeof fetch === 'function')) {
-                        logResult("Fetch: Request object", check(() => typeof Request !== 'undefined'));
-                        logResult("Fetch: Response object", check(() => typeof Response !== 'undefined'));
-                        logResult("Fetch: Headers object", check(() => typeof Headers !== 'undefined'));
-                    }
-                    logResult("WebSockets", check(() => typeof WebSocket !== 'undefined'));
-                    logResult("Server-Sent Events (EventSource)", check(() => typeof EventSource !== 'undefined'));
+                    // ========================================
+                    // Web3 (Placeholder)
+                    // ========================================
+                    logHeader("Web3 (Ethereum Provider)");
+                     if (typeof window.ethereum !== 'undefined') {
+                         logResult('window.ethereum object', true);
+                         logMethodPresence(window.ethereum, 'request', 'window.ethereum'); // The main method
+                         logMethodPresence(window.ethereum, 'on', 'window.ethereum'); // Event listener
+                         logMethodPresence(window.ethereum, 'removeListener', 'window.ethereum'); // Event listener removal
+                         logMethodPresence(window.ethereum, 'isConnected', 'window.ethereum'); // Status check
+                         // Older/deprecated methods might exist: enable(), sendAsync(), send()
+                         logMethodPresence(window.ethereum, 'enable', 'window.ethereum (Deprecated)');
+                         logMethodPresence(window.ethereum, 'sendAsync', 'window.ethereum (Deprecated)');
+                         logMethodPresence(window.ethereum, 'send', 'window.ethereum (Deprecated)');
+                     } else { logResult('window.ethereum object', false); }
 
-                    logSubHeader("Workers");
-                    logResult("Web Workers (Dedicated)", check(() => typeof Worker !== 'undefined'));
-                    logResult("Shared Workers", check(() => typeof SharedWorker !== 'undefined'));
-                    logResult("Service Workers", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'serviceWorker')));
-
-
-                    logHeader("Device Access & Interaction");
-                    logResult("Touch Events (ontouchstart / maxTouchPoints)", check(() => 'ontouchstart' in window || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0)));
-                    logResult("Pointer Events", check(() => typeof PointerEvent !== 'undefined'));
-                    logResult("Gamepad API (navigator.getGamepads)", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'getGamepads')));
-                    logResult("Geolocation API (navigator.geolocation)", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'geolocation')));
-                    logResult("Orientation Events (DeviceOrientationEvent)", check(() => typeof DeviceOrientationEvent !== 'undefined'));
-                    logResult("Motion Events (DeviceMotionEvent)", check(() => typeof DeviceMotionEvent !== 'undefined'));
-                    logResult("Vibration API (navigator.vibrate)", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'vibrate')));
-                    logResult("Screen Orientation API (screen.orientation)", check(() => typeof screen !== 'undefined' && hasProp(screen, 'orientation') && hasProp(screen.orientation, 'type')));
-                    logResult("Fullscreen API (element.requestFullscreen)", check(() => { const el = document.documentElement; return !!(el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen); }) );
-                    logResult("Battery Status API (navigator.getBattery)", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'getBattery')));
-                    logResult("Media Capture API (navigator.mediaDevices.getUserMedia)", check(() => typeof navigator !== 'undefined' && navigator.mediaDevices && hasProp(navigator.mediaDevices, 'getUserMedia')));
-
-
-                    logHeader("Performance & Timing");
-                    const perf = window.performance || window.mozPerformance || window.msPerformance || window.webkitPerformance;
-                    logResult("Performance Object", !!perf);
-                    if (perf) {
-                        logResult("High Resolution Time (performance.now)", check(() => hasProp(perf, 'now') && typeof perf.now === 'function'));
-                        logResult("Navigation Timing API (performance.timing)", check(() => hasProp(perf, 'timing') && hasProp(perf.timing, 'navigationStart')));
-                        logResult("Resource Timing API (performance.getEntriesByType)", check(() => hasProp(perf, 'getEntriesByType')));
-                        logResult("User Timing API (performance.mark/measure)", check(() => hasProp(perf, 'mark') && hasProp(perf, 'measure')));
-                    }
-                    logResult("Animation Timing (requestAnimationFrame)", check(() => typeof requestAnimationFrame === 'function' || typeof webkitRequestAnimationFrame === 'function' || typeof mozRequestAnimationFrame === 'function'));
-
-
-                    logHeader("Other APIs");
-                    logResult("Web Crypto API (crypto.subtle)", check(() => !!(window.crypto && (window.crypto.subtle || window.crypto.webkitSubtle))));
-                    logResult("URL API (window.URL)", check(() => typeof window.URL !== 'undefined'));
-                    logResult("Internationalization API (Intl)", check(() => typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function'));
-                    logResult("Base64 Utilities (btoa/atob)", check(() => typeof btoa === 'function' && typeof atob === 'function'));
-                    logResult("History API (pushState/replaceState)", check(() => typeof history !== 'undefined' && typeof history.pushState === 'function' && typeof history.replaceState === 'function'));
-
-
-                    logHeader("CSS Feature Detection (via JS)");
-                    logResult("CSS Variables (--*)", supportsCSS('--dummy-var'));
-                    logResult("CSS calc()", supportsCSS('width', 'calc(1px + 1px)'));
-                    logResult("CSS Flexbox", supportsCSS('display', 'flex'));
-                    logResult("CSS Grid Layout", supportsCSS('display', 'grid'));
-                    logResult("CSS Transforms", supportsCSS('transform'));
-                    logResult("CSS Transitions", supportsCSS('transition'));
-                    logResult("CSS Animations", supportsCSS('animation'));
-                    logResult("CSS Filters", supportsCSS('filter'));
-                    logResult("CSS @supports", check(() => typeof CSS !== 'undefined' && typeof CSS.supports === 'function'));
-
-
-                    logHeader("Web3");
-                    logResult("Ethereum Provider (window.ethereum)", check(() => typeof window.ethereum !== 'undefined'));
 
                     // --- End of test sections ---
-
-                    logOutput += "\n--- Test Run Complete ---";
+                    logOutput += "\n--- Method Presence Test Run Complete ---";
                     resultsLog.value = logOutput;
-                    if (resultsLog) resultsLog.scrollTop = 0; // Scroll top only if log exists
+                    if (resultsLog) resultsLog.scrollTop = 0;
 
                 } catch (testError) {
-                    // Catch any error that occurred *during* the tests
                     logOutput += `\n\n--- ERROR DURING TESTS ---`;
                     logOutput += `\nError Name: ${testError.name}`;
                     logOutput += `\nError Message: ${testError.message}`;
                     if (testError.stack) {
                         logOutput += `\nStack Trace:\n${testError.stack}`;
                     }
-                    resultsLog.value = logOutput; // Display the error details
+                    resultsLog.value = logOutput;
                 }
             }
 
             // --- Stage 5: Trigger Test Execution ---
-            logOutput += "Scheduling tests...\n";
-            resultsLog.value = logOutput;
-
-            if (document.readyState === 'loading') {
-                 logOutput += "Waiting for DOMContentLoaded...\n";
-                 resultsLog.value = logOutput;
-                 document.addEventListener('DOMContentLoaded', function() {
-                     logOutput += "DOMContentLoaded event fired. Running tests...\n";
-                     resultsLog.value = logOutput;
-                     runTests();
-                 });
-            } else {
-                 logOutput += "DOM already ready/interactive. Running tests via setTimeout...\n";
-                 resultsLog.value = logOutput;
-                 // Use setTimeout to ensure the browser has a chance to render initial updates
-                 setTimeout(runTests, 50); // Increased timeout slightly
-            }
+             logOutput += "Scheduling tests...\n";
+             resultsLog.value = logOutput;
+             if (document.readyState === 'loading') {
+                  logOutput += "Waiting for DOMContentLoaded...\n";
+                  resultsLog.value = logOutput;
+                  document.addEventListener('DOMContentLoaded', function() {
+                      logOutput += "DOMContentLoaded event fired. Running tests...\n";
+                      resultsLog.value = logOutput;
+                      setTimeout(runTests, 0); // Use setTimeout even here to allow rendering update
+                  });
+             } else {
+                  logOutput += "DOM already ready/interactive. Running tests via setTimeout...\n";
+                  resultsLog.value = logOutput;
+                  setTimeout(runTests, 50); // Increased timeout slightly
+             }
 
         })(); // End of IIFE
     </script>
