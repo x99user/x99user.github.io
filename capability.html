@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Granular Browser Capability Tester (Text Log)</title>
+    <title>Granular Browser Capability Tester (Text Log - Debug)</title>
     <style>
         body {
             font-family: sans-serif;
@@ -47,353 +47,440 @@
 </head>
 <body>
 
-    <h1>Granular Browser Capability Test (Text Log)</h1>
+    <h1>Granular Browser Capability Test (Text Log - Debug)</h1>
     <div id="info">
-        <strong>User Agent:</strong> <span id="userAgent"></span><br>
-        <strong>Platform:</strong> <span id="platform"></span><br>
-        <strong>Language:</strong> <span id="language"></span><br>
+        <strong>User Agent:</strong> <span id="userAgent">?</span><br>
+        <strong>Platform:</strong> <span id="platform">?</span><br>
+        <strong>Language:</strong> <span id="language">?</span><br>
     </div>
 
     <label for="resultsLog">Test Results Log:</label>
-    <textarea id="resultsLog" readonly>Running tests...</textarea>
+    <textarea id="resultsLog" readonly>Initializing script...</textarea>
 
     <script>
         // --- Test Infrastructure ---
         (function() {
-            const resultsLog = document.getElementById('resultsLog');
-            let logOutput = ""; // Start with empty log string
+            // --- Stage 1: Get Essential Elements and Basic Logging ---
+            let resultsLog = null;
+            let initialLogOutput = "Script Execution Started.\n";
+            let criticalError = false;
 
-            // Populate basic info
-            document.getElementById('userAgent').textContent = navigator.userAgent || 'N/A';
-            document.getElementById('platform').textContent = navigator.platform || 'N/A';
-            document.getElementById('language').textContent = navigator.language || navigator.userLanguage || 'N/A';
+            try {
+                resultsLog = document.getElementById('resultsLog');
+                if (!resultsLog) {
+                    // If we can't even get the textarea, something is fundamentally wrong
+                    // We can't log to it, maybe try an alert (might not work on Kindle)
+                    try { alert("ERROR: Cannot find resultsLog textarea!"); } catch(e){}
+                    criticalError = true;
+                    // Try changing body background as a visual cue if textarea fails
+                    document.body.style.backgroundColor = 'red';
+                    return; // Stop execution
+                }
+                // We have the textarea, update it immediately
+                resultsLog.value = initialLogOutput;
 
-            // Initial log message
-            logOutput += `Test Run Started: ${new Date().toISOString()}\n`;
-            logOutput += `User Agent: ${navigator.userAgent || 'N/A'}\n`;
-            logOutput += `Platform: ${navigator.platform || 'N/A'}\n`;
-            logOutput += `Language: ${navigator.language || navigator.userLanguage || 'N/A'}\n\n`;
-            resultsLog.value = logOutput; // Initial update
+                // Try getting other elements
+                const userAgentSpan = document.getElementById('userAgent');
+                const platformSpan = document.getElementById('platform');
+                const languageSpan = document.getElementById('language');
+
+                // --- Stage 2: Populate Basic Browser Info ---
+                initialLogOutput += "Populating basic info...\n";
+                resultsLog.value = initialLogOutput; // Update progress
+
+                let ua = 'N/A', pf = 'N/A', lg = 'N/A';
+                try { ua = navigator.userAgent || 'N/A'; } catch(e){ ua = 'Error accessing userAgent'; }
+                try { pf = navigator.platform || 'N/A'; } catch(e){ pf = 'Error accessing platform'; }
+                try { lg = navigator.language || navigator.userLanguage || 'N/A'; } catch(e){ lg = 'Error accessing language'; }
+
+                if (userAgentSpan) userAgentSpan.textContent = ua; else initialLogOutput += "WARN: userAgentSpan not found.\n";
+                if (platformSpan) platformSpan.textContent = pf; else initialLogOutput += "WARN: platformSpan not found.\n";
+                if (languageSpan) languageSpan.textContent = lg; else initialLogOutput += "WARN: languageSpan not found.\n";
+
+                initialLogOutput += `User Agent: ${ua}\n`;
+                initialLogOutput += `Platform: ${pf}\n`;
+                initialLogOutput += `Language: ${lg}\n\n`;
+                resultsLog.value = initialLogOutput; // Update with populated info
+
+            } catch (e) {
+                // Catch errors during the *initial setup phase*
+                criticalError = true;
+                const errorMsg = `CRITICAL SETUP ERROR:\nName: ${e.name}\nMessage: ${e.message}\n${e.stack ? 'Stack:\n' + e.stack : ''}\n\n`;
+                if (resultsLog) {
+                    resultsLog.value = initialLogOutput + errorMsg;
+                } else {
+                    // Fallback if textarea wasn't found
+                    try { alert(errorMsg); } catch(alertErr){}
+                     document.body.style.backgroundColor = 'orange'; // Different color for setup error
+                }
+                return; // Stop if setup fails critically
+            }
+
+            // --- Stage 3: Define Test Functions (if setup was successful) ---
+            let logOutput = initialLogOutput; // Continue logging from initial info
 
             function logHeader(title) {
+                if (criticalError) return;
                 logOutput += `\n--- ${title.toUpperCase()} ---\n`;
+                resultsLog.value = logOutput; // Update immediately
             }
 
             function logSubHeader(title) {
-                logOutput += `  ${title}:\n`; // Indent subheaders
+                if (criticalError) return;
+                logOutput += `  ${title}:\n`;
+                resultsLog.value = logOutput;
             }
 
             function logResult(featureName, status, details = '') {
+                if (criticalError) return;
                 let statusText = 'Unknown';
+                try {
+                    if (typeof status === 'boolean') {
+                        statusText = status ? 'Yes' : 'No';
+                    } else if (status === null || status === undefined) {
+                        statusText = 'No';
+                    } else if (typeof status === 'string') {
+                        statusText = status;
+                    } else if (typeof status === 'number') {
+                        statusText = status.toString();
+                    }
 
-                if (typeof status === 'boolean') {
-                    statusText = status ? 'Yes' : 'No';
-                } else if (status === null || status === undefined) {
-                     statusText = 'No'; // Treat null/undefined as unsupported
-                } else if (typeof status === 'string') {
-                    // Pass through strings like 'Partial', 'Yes (Webkit)', etc.
-                    statusText = status;
-                } else if (typeof status === 'number') {
-                    statusText = status.toString(); // Handle numbers if needed
+                    logOutput += `    - ${featureName}: ${statusText}`;
+                    if (details) {
+                        logOutput += ` (${details})`;
+                    }
+                    logOutput += `\n`;
+                    resultsLog.value = logOutput;
+                    // Avoid scrolling automatically, might be slow/problematic
+                    // resultsLog.scrollTop = resultsLog.scrollHeight;
+                } catch (logError) {
+                    // Prevent logging errors from stopping the whole process
+                    logOutput += `    * Error logging result for ${featureName}: ${logError.message} *\n`;
+                    resultsLog.value = logOutput;
                 }
-
-                logOutput += `    - ${featureName}: ${statusText}`; // Indent items
-                if (details) {
-                    logOutput += ` (${details})`;
-                }
-                logOutput += `\n`;
-                 // Update the textarea content dynamically
-                resultsLog.value = logOutput;
-                // Scroll to bottom (optional, might be slow on Kindle)
-                // resultsLog.scrollTop = resultsLog.scrollHeight;
             }
 
-             // Helper for try/catch checks returning boolean
             function check(fn) {
                 try {
-                    // Execute the function and ensure it returns truthy, not just runs without error
                     const result = fn();
-                    // Treat 0 or empty string from a check function as false unless explicitly allowed
+                    // !!result ensures false, 0, '', null, undefined become false
+                    // and other values (true, 1, "hello", objects) become true
                     return !!result;
                 } catch (e) {
-                    // console.error("Check failed for", fn.toString(), e); // Optional debug
+                    // Log check failures subtly if needed for debugging, but return false
+                    // console.log(`Check failed: ${fn.toString().substring(0, 50)}... Error: ${e.message}`);
                     return false;
                 }
             }
 
-             // Helper for checking property existence on an object
             function hasProp(obj, prop) {
-                // Ensure obj is not null/undefined before checking prop
-                return typeof obj !== 'undefined' && obj !== null && prop in obj;
+                 // Explicitly check for null/undefined obj first
+                if (typeof obj === 'undefined' || obj === null) {
+                    return false;
+                }
+                try {
+                    return prop in obj;
+                } catch (e) {
+                    // Accessing properties on certain host objects might throw
+                    return false;
+                }
             }
 
-             // Helper for checking CSS property support (basic)
              function supportsCSS(property, value = 'inherit') {
-                 if (typeof CSS !== 'undefined' && CSS.supports) {
-                     // Preferred modern method
-                     // Check both property name and specific value support
-                     if (CSS.supports(property, value)) return true;
-                     if (CSS.supports(`(${property}: ${value})`)) return true;
-                     // Fallback check for just the property name if value check fails
-                     if (CSS.supports(property, 'inherit') || CSS.supports(`(${property}: inherit)`)) return 'Yes (prop only)';
+                 try {
+                    if (typeof CSS !== 'undefined' && CSS.supports) {
+                        if (CSS.supports(property, value)) return true;
+                        if (CSS.supports(`(${property}: ${value})`)) return true;
+                        if (value !== 'inherit' && (CSS.supports(property, 'inherit') || CSS.supports(`(${property}: inherit)`))) return 'Yes (prop only)';
+                    }
+                     // Fallback, ensure body.style exists
+                     if (document.body && document.body.style) {
+                         const style = document.body.style;
+                         if (property in style) return 'Yes (style prop)';
+                         const capitalized = property.charAt(0).toUpperCase() + property.slice(1);
+                         if (`Webkit${capitalized}` in style) return 'Yes (Webkit)';
+                         if (`Moz${capitalized}` in style) return 'Yes (Moz)';
+                         if (`ms${capitalized}` in style) return 'Yes (ms)';
+                         if (`O${capitalized}` in style) return 'Yes (O)';
+                     }
+                 } catch (e) {
+                     // CSS.supports or style access might throw in edge cases
+                     return false;
                  }
-                 // Fallback: check style object (less reliable, doesn't check values)
-                 const style = document.body.style;
-                 if (typeof style === 'undefined') return false; // Body style might not be ready early
-
-                 if (property in style) return 'Yes (style prop)';
-                 // Check vendor prefixes (common ones)
-                 const capitalized = property.charAt(0).toUpperCase() + property.slice(1);
-                 if (`Webkit${capitalized}` in style) return 'Yes (Webkit)';
-                 if (`Moz${capitalized}` in style) return 'Yes (Moz)';
-                 if (`ms${capitalized}` in style) return 'Yes (ms)';
-                 if (`O${capitalized}` in style) return 'Yes (O)';
                  return false;
              }
 
-             // --- Test Execution ---
-             // Wrap tests in a function to ensure DOM is ready for CSS checks etc.
+            // --- Stage 4: Define the Main Test Runner ---
             function runTests() {
-                logHeader("Core JavaScript & ES Features");
-                logSubHeader("ES5 / Basic");
-                logResult("Basic JS Execution", true);
-                logResult("JSON Parsing (JSON.parse)", check(() => typeof JSON !== 'undefined' && typeof JSON.parse === 'function'));
-                logResult("Strict Mode ('use strict')", check(() => { try { Function("'use strict'; return this;")(); return true; } catch(e){ return false; }}));
-                logResult("Object.defineProperty", check(() => typeof Object.defineProperty === 'function'));
-
-                logSubHeader("ES6 / ES2015");
-                logResult("let / const", check(() => { try { eval("let a = 1; const b = 2;"); return true; } catch (e) { return false; } }));
-                logResult("Arrow Functions", check(() => { try { eval("const fn = () => true;"); return true; } catch (e) { return false; } }));
-                logResult("Promises", check(() => typeof Promise !== 'undefined'));
-                logResult("Map", check(() => typeof Map !== 'undefined'));
-                logResult("Set", check(() => typeof Set !== 'undefined'));
-                logResult("Symbol", check(() => typeof Symbol !== 'undefined'));
-                logResult("Template Literals", check(() => { try { eval("const x = 'test'; `${x}`"); return true; } catch (e) { return false; } }));
-                logResult("Default Parameters", check(() => { try { eval("function fn(a = true) { return a; };"); return true; } catch (e) { return false; } }));
-                logResult("Rest Parameters", check(() => { try { eval("function fn(...args) { return args.length; };"); return true; } catch (e) { return false; } }));
-                logResult("Spread Operator", check(() => { try { eval("const arr1 = [1, 2]; const arr2 = [...arr1, 3];"); return true; } catch (e) { return false; } }));
-                logResult("Typed Arrays (Uint8Array)", check(() => typeof Uint8Array !== 'undefined'));
-
-                logSubHeader("ES2016+ (Selected)");
-                logResult("Array.prototype.includes", check(() => typeof Array.prototype.includes === 'function'));
-                logResult("Async/Await", check(() => { try { eval("async function test(){ await Promise.resolve(); }"); return true; } catch(e) { return false; } } ));
-                logResult("Object.values / Object.entries", check(() => typeof Object.values === 'function' && typeof Object.entries === 'function'));
-                logResult("Optional Chaining (?.)", check(() => { try { eval("const obj = {}; const x = obj?.prop?.subprop;"); return true; } catch (e) { return false; }}));
-                logResult("Nullish Coalescing (??)", check(() => { try { eval("const x = null ?? 'default';"); return true; } catch (e) { return false; }}));
-
-
-                logHeader("HTML5 Elements");
-                const testElement = (tag) => check(() => {
-                    const el = document.createElement(tag);
-                    // Check if it's a specific HTMLElement subclass or just a generic HTMLElement/HTMLUnknownElement
-                    const isKnown = window[`HTML${tag.charAt(0).toUpperCase() + tag.slice(1)}Element`];
-                    return el instanceof HTMLElement && !(el instanceof HTMLUnknownElement) && (!isKnown || el instanceof isKnown);
-                });
-                logResult("<canvas>", testElement('canvas'));
-                logResult("<audio>", testElement('audio'));
-                logResult("<video>", testElement('video'));
-                logResult("<details> & <summary>", testElement('details') && testElement('summary'));
-                logResult("<meter>", testElement('meter'));
-                logResult("<progress>", testElement('progress'));
-                logResult("<template>", testElement('template'));
-                logResult("<svg> (inline)", check(() => !!document.createElementNS && !!document.createElementNS('http://www.w3.org/2000/svg', 'svg').createSVGRect));
-                logResult("Attribute: hidden", hasProp(document.createElement('div'), 'hidden'));
-                logResult("Attribute: data-*", check(() => { try { const el = document.createElement('div'); el.setAttribute('data-test', 'val'); return el.dataset.test === 'val'; } catch(e) { return false; }}));
-
-
-                logHeader("Forms");
-                const testInputType = (type) => check(() => { const i = document.createElement('input'); i.setAttribute('type', type); return i.type === type; });
-                logResult("Input type: color", testInputType('color'));
-                logResult("Input type: date", testInputType('date'));
-                logResult("Input type: datetime-local", testInputType('datetime-local'));
-                logResult("Input type: email", testInputType('email'));
-                logResult("Input type: month", testInputType('month'));
-                logResult("Input type: number", testInputType('number'));
-                logResult("Input type: range", testInputType('range'));
-                logResult("Input type: search", testInputType('search'));
-                logResult("Input type: tel", testInputType('tel'));
-                logResult("Input type: time", testInputType('time'));
-                logResult("Input type: url", testInputType('url'));
-                logResult("Input type: week", testInputType('week'));
-                logResult("Attribute: placeholder", hasProp(document.createElement('input'), 'placeholder'));
-                logResult("Attribute: required", hasProp(document.createElement('input'), 'required'));
-                logResult("Attribute: pattern", hasProp(document.createElement('input'), 'pattern'));
-                logResult("Attribute: autofocus", hasProp(document.createElement('input'), 'autofocus'));
-                logResult("Form Validation API (checkValidity)", hasProp(document.createElement('form'), 'checkValidity'));
-
-
-                logHeader("Graphics & Media");
-                logSubHeader("Canvas 2D");
-                let canvas = null, ctx2d = null;
-                try { canvas = document.createElement('canvas'); } catch(e){}
-                if (canvas && typeof canvas.getContext === 'function') {
-                    try { ctx2d = canvas.getContext('2d'); } catch(e){}
-                }
-                logResult("2D Context", !!ctx2d);
-                if (ctx2d) {
-                    logResult("Method: fillText", hasProp(ctx2d, 'fillText'));
-                    logResult("Method: measureText", hasProp(ctx2d, 'measureText'));
-                    logResult("Method: drawImage", hasProp(ctx2d, 'drawImage'));
-                    logResult("Method: ellipse", hasProp(ctx2d, 'ellipse')); // Newer method
-                    logResult("Feature: Path2D", check(() => typeof Path2D !== 'undefined'));
-                    logResult("Feature: ImageData", check(() => typeof ImageData !== 'undefined'));
-                    const imageSmoothing = hasProp(ctx2d, 'imageSmoothingEnabled') || hasProp(ctx2d, 'webkitImageSmoothingEnabled') || hasProp(ctx2d, 'mozImageSmoothingEnabled') || hasProp(ctx2d, 'msImageSmoothingEnabled');
-                    logResult("Feature: Image Smoothing", imageSmoothing);
+                if (criticalError) {
+                     logOutput += "\nSkipping tests due to critical setup error.\n";
+                     resultsLog.value = logOutput;
+                     return;
                 }
 
-                logSubHeader("WebGL");
-                 const getGlContext = (version) => check(() => {
-                    const c = document.createElement('canvas');
-                    // Need try-catch as getContext itself can throw in some environments
-                    try {
-                        return c.getContext(version) || c.getContext(`experimental-${version}`);
-                    } catch (e) { return null; }
-                });
-                const hasWebGL1 = getGlContext('webgl');
-                const hasWebGL2 = getGlContext('webgl2');
-                logResult("WebGL 1 Context", !!hasWebGL1);
-                logResult("WebGL 2 Context", !!hasWebGL2);
+                logOutput += "Starting detailed tests...\n";
+                resultsLog.value = logOutput; // Update
 
-                logSubHeader("Audio");
-                let audio = null;
-                try { audio = document.createElement('audio'); } catch(e){}
-                logResult("<audio> Element", !!audio);
-                 if (audio && typeof audio.canPlayType === 'function') {
-                    const canPlayType = (type) => { try { return audio.canPlayType(type); } catch(e){ return ''; } };
-                    logResult("Format Check: MP3 (audio/mpeg)", canPlayType('audio/mpeg;') || 'No');
-                    logResult("Format Check: AAC (audio/aac)", canPlayType('audio/aac;') || 'No');
-                    logResult("Format Check: Ogg Vorbis (audio/ogg; codecs=vorbis)", canPlayType('audio/ogg; codecs="vorbis"') || 'No');
-                    logResult("Format Check: Opus (audio/opus) or (audio/ogg; codecs=opus)", canPlayType('audio/opus') || canPlayType('audio/ogg; codecs="opus"') || 'No');
-                    logResult("Format Check: WAV (audio/wav; codecs=1)", canPlayType('audio/wav; codecs="1"') || 'No');
-                    logResult("Attribute: preload", hasProp(audio, 'preload'));
-                    logResult("Attribute: autoplay", hasProp(audio, 'autoplay')); // Note: Autoplay is often restricted by browsers
-                    logResult("API: playbackRate", hasProp(audio, 'playbackRate'));
+                // Wrap all tests in a try-catch to catch unexpected errors during testing
+                try {
+                    logHeader("Core JavaScript & ES Features");
+                    logSubHeader("ES5 / Basic");
+                    logResult("Basic JS Execution", true); // If we got here, basic JS works
+                    logResult("JSON Parsing (JSON.parse)", check(() => typeof JSON !== 'undefined' && typeof JSON.parse === 'function'));
+                    logResult("Strict Mode ('use strict')", check(() => { try { Function("'use strict'; return this;")(); return true; } catch(e){ return false; }}));
+                    logResult("Object.defineProperty", check(() => typeof Object.defineProperty === 'function'));
+
+                    logSubHeader("ES6 / ES2015");
+                    logResult("let / const", check(() => { try { eval("let a = 1; const b = 2;"); return true; } catch (e) { return false; } }));
+                    logResult("Arrow Functions", check(() => { try { eval("const fn = () => true;"); return true; } catch (e) { return false; } }));
+                    logResult("Promises", check(() => typeof Promise !== 'undefined'));
+                    logResult("Map", check(() => typeof Map !== 'undefined'));
+                    logResult("Set", check(() => typeof Set !== 'undefined'));
+                    logResult("Symbol", check(() => typeof Symbol !== 'undefined'));
+                    logResult("Template Literals", check(() => { try { eval("const x = 'test'; `${x}`"); return true; } catch (e) { return false; } }));
+                    logResult("Default Parameters", check(() => { try { eval("function fn(a = true) { return a; };"); return true; } catch (e) { return false; } }));
+                    logResult("Rest Parameters", check(() => { try { eval("function fn(...args) { return args.length; };"); return true; } catch (e) { return false; } }));
+                    logResult("Spread Operator", check(() => { try { eval("const arr1 = [1, 2]; const arr2 = [...arr1, 3];"); return true; } catch (e) { return false; } }));
+                    logResult("Typed Arrays (Uint8Array)", check(() => typeof Uint8Array !== 'undefined'));
+
+                    logSubHeader("ES2016+ (Selected)");
+                    logResult("Array.prototype.includes", check(() => typeof Array.prototype.includes === 'function'));
+                    logResult("Async/Await", check(() => { try { eval("async function test(){ await Promise.resolve(); }"); return true; } catch(e) { return false; } } ));
+                    logResult("Object.values / Object.entries", check(() => typeof Object.values === 'function' && typeof Object.entries === 'function'));
+                    logResult("Optional Chaining (?.)", check(() => { try { eval("const obj = {}; const x = obj?.prop?.subprop;"); return true; } catch (e) { return false; }}));
+                    logResult("Nullish Coalescing (??)", check(() => { try { eval("const x = null ?? 'default';"); return true; } catch (e) { return false; }}));
+
+
+                    logHeader("HTML5 Elements");
+                    const testElement = (tag) => check(() => {
+                        const el = document.createElement(tag);
+                        // More robust check: Ensure it's an HTMLElement and not HTMLUnknownElement
+                        return (el instanceof HTMLElement && !(el instanceof HTMLUnknownElement));
+                    });
+                    logResult("<canvas>", testElement('canvas'));
+                    logResult("<audio>", testElement('audio'));
+                    logResult("<video>", testElement('video'));
+                    logResult("<details> & <summary>", testElement('details') && testElement('summary'));
+                    logResult("<meter>", testElement('meter'));
+                    logResult("<progress>", testElement('progress'));
+                    logResult("<template>", testElement('template'));
+                    logResult("<svg> (inline)", check(() => !!(document.createElementNS && document.createElementNS('http://www.w3.org/2000/svg', 'svg').createSVGRect)));
+                    logResult("Attribute: hidden", check(() => document.createElement('div').hidden !== undefined)); // Check property existence
+                    logResult("Attribute: data-*", check(() => { try { const el = document.createElement('div'); el.setAttribute('data-test', 'val'); return el.dataset.test === 'val'; } catch(e) { return false; }}));
+
+
+                    logHeader("Forms");
+                    const testInputType = (type) => check(() => { try { const i = document.createElement('input'); i.setAttribute('type', type); return i.type === type; } catch(e) {return false;} });
+                    logResult("Input type: color", testInputType('color'));
+                    logResult("Input type: date", testInputType('date'));
+                    logResult("Input type: datetime-local", testInputType('datetime-local'));
+                    logResult("Input type: email", testInputType('email'));
+                    logResult("Input type: month", testInputType('month'));
+                    logResult("Input type: number", testInputType('number'));
+                    logResult("Input type: range", testInputType('range'));
+                    logResult("Input type: search", testInputType('search'));
+                    logResult("Input type: tel", testInputType('tel'));
+                    logResult("Input type: time", testInputType('time'));
+                    logResult("Input type: url", testInputType('url'));
+                    logResult("Input type: week", testInputType('week'));
+                    logResult("Attribute: placeholder", check(() => 'placeholder' in document.createElement('input')));
+                    logResult("Attribute: required", check(() => 'required' in document.createElement('input')));
+                    logResult("Attribute: pattern", check(() => 'pattern' in document.createElement('input')));
+                    logResult("Attribute: autofocus", check(() => 'autofocus' in document.createElement('input')));
+                    logResult("Form Validation API (checkValidity)", check(() => 'checkValidity' in document.createElement('form')));
+
+                    // --- (Include ALL other test sections here: Graphics, Storage, Connectivity, etc.) ---
+                    // --- (Copy them from the previous version) ---
+
+                    logHeader("Graphics & Media");
+                    logSubHeader("Canvas 2D");
+                    let canvas = null, ctx2d = null;
+                    try { canvas = document.createElement('canvas'); } catch(e){}
+                    if (canvas && typeof canvas.getContext === 'function') {
+                        try { ctx2d = canvas.getContext('2d'); } catch(e){}
+                    }
+                    logResult("2D Context", !!ctx2d);
+                    if (ctx2d) {
+                        logResult("Method: fillText", hasProp(ctx2d, 'fillText'));
+                        logResult("Method: measureText", hasProp(ctx2d, 'measureText'));
+                        logResult("Method: drawImage", hasProp(ctx2d, 'drawImage'));
+                        logResult("Method: ellipse", hasProp(ctx2d, 'ellipse')); // Newer method
+                        logResult("Feature: Path2D", check(() => typeof Path2D !== 'undefined'));
+                        logResult("Feature: ImageData", check(() => typeof ImageData !== 'undefined'));
+                        const imageSmoothing = check(() => hasProp(ctx2d, 'imageSmoothingEnabled') || hasProp(ctx2d, 'webkitImageSmoothingEnabled') || hasProp(ctx2d, 'mozImageSmoothingEnabled') || hasProp(ctx2d, 'msImageSmoothingEnabled'));
+                        logResult("Feature: Image Smoothing", imageSmoothing);
+                    }
+
+                    logSubHeader("WebGL");
+                    const getGlContext = (version) => check(() => {
+                        const c = document.createElement('canvas');
+                        try { return c.getContext(version) || c.getContext(`experimental-${version}`); } catch (e) { return null; }
+                    });
+                    const hasWebGL1 = getGlContext('webgl');
+                    const hasWebGL2 = getGlContext('webgl2');
+                    logResult("WebGL 1 Context", !!hasWebGL1);
+                    logResult("WebGL 2 Context", !!hasWebGL2);
+
+                    logSubHeader("Audio");
+                    let audio = null;
+                    try { audio = document.createElement('audio'); } catch(e){}
+                    logResult("<audio> Element", !!audio);
+                    if (audio && typeof audio.canPlayType === 'function') {
+                        const canPlayType = (type) => { try { const res = audio.canPlayType(type); return (res === 'probably' || res === 'maybe') ? res : 'No'; } catch(e){ return 'Error'; } };
+                        logResult("Format Check: MP3 (audio/mpeg)", canPlayType('audio/mpeg;'));
+                        logResult("Format Check: AAC (audio/aac)", canPlayType('audio/aac;'));
+                        logResult("Format Check: Ogg Vorbis (audio/ogg; codecs=vorbis)", canPlayType('audio/ogg; codecs="vorbis"'));
+                        logResult("Format Check: Opus (audio/opus) or (audio/ogg; codecs=opus)", canPlayType('audio/opus') || canPlayType('audio/ogg; codecs="opus"'));
+                        logResult("Format Check: WAV (audio/wav; codecs=1)", canPlayType('audio/wav; codecs="1"'));
+                        logResult("Attribute: preload", hasProp(audio, 'preload'));
+                        logResult("Attribute: autoplay", hasProp(audio, 'autoplay'));
+                        logResult("API: playbackRate", hasProp(audio, 'playbackRate'));
+                    }
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    logResult("Web Audio API (AudioContext)", !!AudioContext);
+                    if (AudioContext) {
+                        let audioCtx = null;
+                        try { audioCtx = new AudioContext(); } catch (e) { logResult("Web Audio API Context Creation", false, `Error: ${e.message}`); }
+                        if (audioCtx) {
+                            logResult("Node: GainNode (createGain)", check(() => typeof audioCtx.createGain === 'function'));
+                            logResult("Node: BufferSource (createBufferSource)", check(() => typeof audioCtx.createBufferSource === 'function'));
+                            logResult("Node: Oscillator (createOscillator)", check(() => typeof audioCtx.createOscillator === 'function'));
+                            logResult("Method: decodeAudioData", check(() => typeof audioCtx.decodeAudioData === 'function'));
+                            if (typeof audioCtx.close === 'function') { try { audioCtx.close(); } catch(e){} }
+                        }
+                    }
+
+                    logSubHeader("Video");
+                    let video = null;
+                    try { video = document.createElement('video'); } catch(e){}
+                    logResult("<video> Element", !!video);
+                    if (video && typeof video.canPlayType === 'function') {
+                        const canPlayType = (type) => { try { const res = video.canPlayType(type); return (res === 'probably' || res === 'maybe') ? res : 'No'; } catch(e){ return 'Error'; } };
+                        logResult("Format Check: H.264 (video/mp4; codecs=avc1...)", canPlayType('video/mp4; codecs="avc1.42E01E"') || canPlayType('video/mp4; codecs="avc1.64001F"'));
+                        logResult("Format Check: VP8 + Vorbis (video/webm; codecs=vp8,vorbis)", canPlayType('video/webm; codecs="vp8, vorbis"'));
+                        logResult("Format Check: VP9 + Opus (video/webm; codecs=vp9,opus)", canPlayType('video/webm; codecs="vp9, opus"'));
+                        logResult("Format Check: AV1 (video/mp4; codecs=av01...)", canPlayType('video/mp4; codecs="av01.0.05M.08"'));
+                        logResult("Format Check: Ogg Theora + Vorbis", canPlayType('video/ogg; codecs="theora, vorbis"'));
+                        logResult("Attribute: controls", hasProp(video, 'controls'));
+                        logResult("Attribute: poster", hasProp(video, 'poster'));
+                        logResult("API: playbackRate", hasProp(video, 'playbackRate'));
+                        logResult("API: requestFullscreen", check(() => !!(video.requestFullscreen || video.webkitRequestFullscreen || video.mozRequestFullScreen || video.msRequestFullscreen)));
+                    }
+
+
+                    logHeader("Storage");
+                    logResult("Local Storage", check(() => { try { localStorage.setItem('__test', '1'); localStorage.removeItem('__test'); return true; } catch(e){ return false; } }));
+                    logResult("Session Storage", check(() => { try { sessionStorage.setItem('__test', '1'); sessionStorage.removeItem('__test'); return true; } catch(e){ return false; } }));
+                    const indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+                    logResult("IndexedDB", !!indexedDB);
+                    if(indexedDB) {
+                        logResult("IndexedDB: open() method", check(() => typeof indexedDB.open === 'function'));
+                    }
+                    logResult("Cache API (window.caches)", check(() => typeof window.caches !== 'undefined'));
+
+
+                    logHeader("Connectivity & Workers");
+                    logSubHeader("Communication");
+                    logResult("XMLHttpRequest Level 2", check(() => typeof XMLHttpRequest !== 'undefined' && hasProp(new XMLHttpRequest(), 'upload')));
+                    logResult("Fetch API", check(() => typeof fetch === 'function'));
+                    if(check(() => typeof fetch === 'function')) {
+                        logResult("Fetch: Request object", check(() => typeof Request !== 'undefined'));
+                        logResult("Fetch: Response object", check(() => typeof Response !== 'undefined'));
+                        logResult("Fetch: Headers object", check(() => typeof Headers !== 'undefined'));
+                    }
+                    logResult("WebSockets", check(() => typeof WebSocket !== 'undefined'));
+                    logResult("Server-Sent Events (EventSource)", check(() => typeof EventSource !== 'undefined'));
+
+                    logSubHeader("Workers");
+                    logResult("Web Workers (Dedicated)", check(() => typeof Worker !== 'undefined'));
+                    logResult("Shared Workers", check(() => typeof SharedWorker !== 'undefined'));
+                    logResult("Service Workers", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'serviceWorker')));
+
+
+                    logHeader("Device Access & Interaction");
+                    logResult("Touch Events (ontouchstart / maxTouchPoints)", check(() => 'ontouchstart' in window || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0)));
+                    logResult("Pointer Events", check(() => typeof PointerEvent !== 'undefined'));
+                    logResult("Gamepad API (navigator.getGamepads)", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'getGamepads')));
+                    logResult("Geolocation API (navigator.geolocation)", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'geolocation')));
+                    logResult("Orientation Events (DeviceOrientationEvent)", check(() => typeof DeviceOrientationEvent !== 'undefined'));
+                    logResult("Motion Events (DeviceMotionEvent)", check(() => typeof DeviceMotionEvent !== 'undefined'));
+                    logResult("Vibration API (navigator.vibrate)", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'vibrate')));
+                    logResult("Screen Orientation API (screen.orientation)", check(() => typeof screen !== 'undefined' && hasProp(screen, 'orientation') && hasProp(screen.orientation, 'type')));
+                    logResult("Fullscreen API (element.requestFullscreen)", check(() => { const el = document.documentElement; return !!(el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen); }) );
+                    logResult("Battery Status API (navigator.getBattery)", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'getBattery')));
+                    logResult("Media Capture API (navigator.mediaDevices.getUserMedia)", check(() => typeof navigator !== 'undefined' && navigator.mediaDevices && hasProp(navigator.mediaDevices, 'getUserMedia')));
+
+
+                    logHeader("Performance & Timing");
+                    const perf = window.performance || window.mozPerformance || window.msPerformance || window.webkitPerformance;
+                    logResult("Performance Object", !!perf);
+                    if (perf) {
+                        logResult("High Resolution Time (performance.now)", check(() => hasProp(perf, 'now') && typeof perf.now === 'function'));
+                        logResult("Navigation Timing API (performance.timing)", check(() => hasProp(perf, 'timing') && hasProp(perf.timing, 'navigationStart')));
+                        logResult("Resource Timing API (performance.getEntriesByType)", check(() => hasProp(perf, 'getEntriesByType')));
+                        logResult("User Timing API (performance.mark/measure)", check(() => hasProp(perf, 'mark') && hasProp(perf, 'measure')));
+                    }
+                    logResult("Animation Timing (requestAnimationFrame)", check(() => typeof requestAnimationFrame === 'function' || typeof webkitRequestAnimationFrame === 'function' || typeof mozRequestAnimationFrame === 'function'));
+
+
+                    logHeader("Other APIs");
+                    logResult("Web Crypto API (crypto.subtle)", check(() => !!(window.crypto && (window.crypto.subtle || window.crypto.webkitSubtle))));
+                    logResult("URL API (window.URL)", check(() => typeof window.URL !== 'undefined'));
+                    logResult("Internationalization API (Intl)", check(() => typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function'));
+                    logResult("Base64 Utilities (btoa/atob)", check(() => typeof btoa === 'function' && typeof atob === 'function'));
+                    logResult("History API (pushState/replaceState)", check(() => typeof history !== 'undefined' && typeof history.pushState === 'function' && typeof history.replaceState === 'function'));
+
+
+                    logHeader("CSS Feature Detection (via JS)");
+                    logResult("CSS Variables (--*)", supportsCSS('--dummy-var'));
+                    logResult("CSS calc()", supportsCSS('width', 'calc(1px + 1px)'));
+                    logResult("CSS Flexbox", supportsCSS('display', 'flex'));
+                    logResult("CSS Grid Layout", supportsCSS('display', 'grid'));
+                    logResult("CSS Transforms", supportsCSS('transform'));
+                    logResult("CSS Transitions", supportsCSS('transition'));
+                    logResult("CSS Animations", supportsCSS('animation'));
+                    logResult("CSS Filters", supportsCSS('filter'));
+                    logResult("CSS @supports", check(() => typeof CSS !== 'undefined' && typeof CSS.supports === 'function'));
+
+
+                    logHeader("Web3");
+                    logResult("Ethereum Provider (window.ethereum)", check(() => typeof window.ethereum !== 'undefined'));
+
+                    // --- End of test sections ---
+
+                    logOutput += "\n--- Test Run Complete ---";
+                    resultsLog.value = logOutput;
+                    if (resultsLog) resultsLog.scrollTop = 0; // Scroll top only if log exists
+
+                } catch (testError) {
+                    // Catch any error that occurred *during* the tests
+                    logOutput += `\n\n--- ERROR DURING TESTS ---`;
+                    logOutput += `\nError Name: ${testError.name}`;
+                    logOutput += `\nError Message: ${testError.message}`;
+                    if (testError.stack) {
+                        logOutput += `\nStack Trace:\n${testError.stack}`;
+                    }
+                    resultsLog.value = logOutput; // Display the error details
                 }
-                 const AudioContext = window.AudioContext || window.webkitAudioContext;
-                 logResult("Web Audio API (AudioContext)", !!AudioContext);
-                 if (AudioContext) {
-                     let audioCtx = null;
-                     try { audioCtx = new AudioContext(); } catch (e) {}
-                     if (audioCtx) {
-                         logResult("Node: GainNode (createGain)", hasProp(audioCtx, 'createGain'));
-                         logResult("Node: BufferSource (createBufferSource)", hasProp(audioCtx, 'createBufferSource'));
-                         logResult("Node: Oscillator (createOscillator)", hasProp(audioCtx, 'createOscillator'));
-                         logResult("Method: decodeAudioData", hasProp(audioCtx, 'decodeAudioData'));
-                         if (typeof audioCtx.close === 'function') { try { audioCtx.close(); } catch(e){} } // Clean up
-                     } else {
-                         logResult("Web Audio API Context Creation", false, "Failed to instantiate");
-                     }
-                 }
-
-                logSubHeader("Video");
-                let video = null;
-                try { video = document.createElement('video'); } catch(e){}
-                logResult("<video> Element", !!video);
-                if (video && typeof video.canPlayType === 'function') {
-                    const canPlayType = (type) => { try { return video.canPlayType(type); } catch(e){ return ''; } };
-                    logResult("Format Check: H.264 (video/mp4; codecs=avc1...)", canPlayType('video/mp4; codecs="avc1.42E01E"') || canPlayType('video/mp4; codecs="avc1.64001F"') || 'No');
-                    logResult("Format Check: VP8 + Vorbis (video/webm; codecs=vp8,vorbis)", canPlayType('video/webm; codecs="vp8, vorbis"') || 'No');
-                    logResult("Format Check: VP9 + Opus (video/webm; codecs=vp9,opus)", canPlayType('video/webm; codecs="vp9, opus"') || 'No');
-                    logResult("Format Check: AV1 (video/mp4; codecs=av01...)", canPlayType('video/mp4; codecs="av01.0.05M.08"') || 'No'); // Basic AV1 check
-                    logResult("Format Check: Ogg Theora + Vorbis", canPlayType('video/ogg; codecs="theora, vorbis"') || 'No');
-                    logResult("Attribute: controls", hasProp(video, 'controls'));
-                    logResult("Attribute: poster", hasProp(video, 'poster'));
-                    logResult("API: playbackRate", hasProp(video, 'playbackRate'));
-                    logResult("API: requestFullscreen", check(() => hasProp(video, 'requestFullscreen') || hasProp(video, 'webkitRequestFullscreen') || hasProp(video, 'mozRequestFullScreen') || hasProp(video, 'msRequestFullscreen')));
-                }
-
-
-                logHeader("Storage");
-                logResult("Local Storage", check(() => { try { localStorage.setItem('__test', '1'); localStorage.removeItem('__test'); return true; } catch(e){ return false; } }));
-                logResult("Session Storage", check(() => { try { sessionStorage.setItem('__test', '1'); sessionStorage.removeItem('__test'); return true; } catch(e){ return false; } }));
-                const indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
-                logResult("IndexedDB", !!indexedDB);
-                if(indexedDB) {
-                     logResult("IndexedDB: open() method", check(() => typeof indexedDB.open === 'function'));
-                     // Note: Actually opening requires async handling, just check method presence
-                }
-                logResult("Cache API (window.caches)", check(() => typeof window.caches !== 'undefined'));
-
-
-                logHeader("Connectivity & Workers");
-                logSubHeader("Communication");
-                logResult("XMLHttpRequest Level 2", check(() => typeof XMLHttpRequest !== 'undefined' && hasProp(new XMLHttpRequest(), 'upload')));
-                logResult("Fetch API", check(() => typeof fetch === 'function'));
-                if(check(() => typeof fetch === 'function')) {
-                    logResult("Fetch: Request object", check(() => typeof Request !== 'undefined'));
-                    logResult("Fetch: Response object", check(() => typeof Response !== 'undefined'));
-                    logResult("Fetch: Headers object", check(() => typeof Headers !== 'undefined'));
-                }
-                logResult("WebSockets", check(() => typeof WebSocket !== 'undefined'));
-                logResult("Server-Sent Events (EventSource)", check(() => typeof EventSource !== 'undefined'));
-
-                logSubHeader("Workers");
-                logResult("Web Workers (Dedicated)", check(() => typeof Worker !== 'undefined'));
-                logResult("Shared Workers", check(() => typeof SharedWorker !== 'undefined'));
-                logResult("Service Workers", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'serviceWorker')));
-
-
-                logHeader("Device Access & Interaction");
-                logResult("Touch Events (ontouchstart / maxTouchPoints)", check(() => 'ontouchstart' in window || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0)));
-                logResult("Pointer Events", check(() => typeof PointerEvent !== 'undefined'));
-                logResult("Gamepad API (navigator.getGamepads)", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'getGamepads')));
-                logResult("Geolocation API (navigator.geolocation)", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'geolocation')));
-                logResult("Orientation Events (DeviceOrientationEvent)", check(() => typeof DeviceOrientationEvent !== 'undefined'));
-                logResult("Motion Events (DeviceMotionEvent)", check(() => typeof DeviceMotionEvent !== 'undefined'));
-                logResult("Vibration API (navigator.vibrate)", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'vibrate')));
-                logResult("Screen Orientation API (screen.orientation)", check(() => typeof screen !== 'undefined' && hasProp(screen, 'orientation') && hasProp(screen.orientation, 'type')));
-                logResult("Fullscreen API (element.requestFullscreen)", check(() => { const el = document.documentElement; return !!(el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen); }) );
-                logResult("Battery Status API (navigator.getBattery)", check(() => typeof navigator !== 'undefined' && hasProp(navigator, 'getBattery'))); // Often requires secure context (HTTPS)
-                logResult("Media Capture API (navigator.mediaDevices.getUserMedia)", check(() => typeof navigator !== 'undefined' && navigator.mediaDevices && hasProp(navigator.mediaDevices, 'getUserMedia')));
-
-
-                logHeader("Performance & Timing");
-                const perf = window.performance || window.mozPerformance || window.msPerformance || window.webkitPerformance;
-                logResult("Performance Object", !!perf);
-                if (perf) {
-                    logResult("High Resolution Time (performance.now)", check(() => hasProp(perf, 'now') && typeof perf.now === 'function'));
-                    logResult("Navigation Timing API (performance.timing)", check(() => hasProp(perf, 'timing') && hasProp(perf.timing, 'navigationStart')));
-                    logResult("Resource Timing API (performance.getEntriesByType)", check(() => hasProp(perf, 'getEntriesByType')));
-                    logResult("User Timing API (performance.mark/measure)", check(() => hasProp(perf, 'mark') && hasProp(perf, 'measure')));
-                }
-                 logResult("Animation Timing (requestAnimationFrame)", check(() => typeof requestAnimationFrame === 'function' || typeof webkitRequestAnimationFrame === 'function' || typeof mozRequestAnimationFrame === 'function'));
-
-
-                logHeader("Other APIs");
-                logResult("Web Crypto API (crypto.subtle)", check(() => !!(window.crypto && (window.crypto.subtle || window.crypto.webkitSubtle))));
-                logResult("URL API (window.URL)", check(() => typeof window.URL !== 'undefined'));
-                logResult("Internationalization API (Intl)", check(() => typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function'));
-                logResult("Base64 Utilities (btoa/atob)", check(() => typeof btoa === 'function' && typeof atob === 'function'));
-                logResult("History API (pushState/replaceState)", check(() => typeof history !== 'undefined' && typeof history.pushState === 'function' && typeof history.replaceState === 'function'));
-
-
-                logHeader("CSS Feature Detection (via JS)");
-                 logResult("CSS Variables (--*)", supportsCSS('--dummy-var'));
-                 logResult("CSS calc()", supportsCSS('width', 'calc(1px + 1px)')); // Check value support
-                 logResult("CSS Flexbox", supportsCSS('display', 'flex'));
-                 logResult("CSS Grid Layout", supportsCSS('display', 'grid'));
-                 logResult("CSS Transforms", supportsCSS('transform'));
-                 logResult("CSS Transitions", supportsCSS('transition'));
-                 logResult("CSS Animations", supportsCSS('animation'));
-                 logResult("CSS Filters", supportsCSS('filter'));
-                 logResult("CSS @supports", check(() => typeof CSS !== 'undefined' && typeof CSS.supports === 'function'));
-
-
-                logHeader("Web3");
-                logResult("Ethereum Provider (window.ethereum)", check(() => typeof window.ethereum !== 'undefined'));
-
-                logOutput += "\n--- Test Run Complete ---";
-                resultsLog.value = logOutput; // Final update
-                resultsLog.scrollTop = 0; // Scroll back to top after completion
             }
 
-            // Run tests after page load to ensure body exists for CSS checks etc.
+            // --- Stage 5: Trigger Test Execution ---
+            logOutput += "Scheduling tests...\n";
+            resultsLog.value = logOutput;
+
             if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', runTests);
+                 logOutput += "Waiting for DOMContentLoaded...\n";
+                 resultsLog.value = logOutput;
+                 document.addEventListener('DOMContentLoaded', function() {
+                     logOutput += "DOMContentLoaded event fired. Running tests...\n";
+                     resultsLog.value = logOutput;
+                     runTests();
+                 });
             } else {
-                // If already loaded or interactive, wait a tiny bit for rendering
-                // This helps ensure document.body.style is available for CSS checks
-                 setTimeout(runTests, 0);
+                 logOutput += "DOM already ready/interactive. Running tests via setTimeout...\n";
+                 resultsLog.value = logOutput;
+                 // Use setTimeout to ensure the browser has a chance to render initial updates
+                 setTimeout(runTests, 50); // Increased timeout slightly
             }
 
         })(); // End of IIFE
