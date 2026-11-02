@@ -1,558 +1,561 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kindle Sudoku</title>
-    <style>
-        /* Basic Reset & High Contrast Defaults */
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: sans-serif;
-            background-color: #ffffff; /* White background */
-            color: #000000; /* Black text */
-            font-size: 16px;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-            overflow: hidden; /* Prevent scrolling */
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Kindle Sudoku</title>
+<style>
+    /* High-contrast, e-ink friendly. No transitions, no animations, no shadows. */
+    html, body {
+        margin: 0;
+        padding: 0;
+        background: #fff;
+        color: #000;
+        font-family: Georgia, "Times New Roman", serif;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: rgba(0,0,0,0);
+    }
+    button {
+        font-family: inherit;
+        font-size: 20px;
+        background: #fff;
+        color: #000;
+        border: 2px solid #000;
+        border-radius: 0;
+        margin: 2px;
+        padding: 0 10px;
+        height: 40px;
+        cursor: pointer;
+        -webkit-appearance: none;
+    }
+    button.on { background: #000; color: #fff; font-weight: bold; }
 
-        /* --- Layout --- */
-        #top-bar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 45px; /* Fixed height */
-            background-color: #000000; /* Black bar */
-            color: #ffffff; /* White text */
-            border-bottom: 2px solid #000000;
-            z-index: 10;
-            display: table;
-            padding: 0 5px;
-            box-sizing: border-box;
-        }
-        #top-bar > div { display: table-cell; vertical-align: middle; }
-        #top-bar-buttons { width: 60%; text-align: left; }
-        #top-bar-message { width: 40%; text-align: right; padding-right: 10px; font-size: 14px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    #bar { border-bottom: 3px solid #000; padding: 3px 4px; overflow: hidden; }
+    #bar-left { float: left; }
+    #bar-right { float: right; }
+    #msg {
+        text-align: center;
+        font-size: 18px;
+        height: 26px;
+        line-height: 26px;
+        overflow: hidden;
+        white-space: nowrap;
+        margin: 4px 0;
+    }
 
-        #middle-area {
-            position: absolute;
-            top: 47px; /* Height of top-bar + border */
-            /* Fallback if calc() isn't supported (approximate) */
-            bottom: 18%; /* 10% from bottom + ~8% for the bar height relative to 757px */
-            left: 0;
-            right: 0;
-            overflow-y: auto;
-            padding: 5px;
-            text-align: center;
-        }
+    #board-wrap { text-align: center; }
+    #board {
+        border-collapse: collapse;
+        border: 4px solid #000;
+        margin: 0 auto;
+        table-layout: fixed;
+    }
+    #board td {
+        border: 1px solid #888;
+        padding: 0;
+        text-align: center;
+        vertical-align: middle;
+        cursor: pointer;
+        overflow: hidden;
+        font-weight: normal;
+    }
+    #board td.br { border-right: 3px solid #000; }
+    #board td.bb { border-bottom: 3px solid #000; }
 
-        #bottom-bar {
-            position: fixed;
-            bottom: 10%; /* Positioned 10% from the absolute bottom */
-            left: 0;
-            width: 100%;
-            height: 75px; /* Fixed height */
-            background-color: #000000; /* Black bar */
-            color: #ffffff; /* White text */
-            border-top: 2px solid #000000;
-            z-index: 10;
-            text-align: center;
-            padding-top: 5px;
-            box-sizing: border-box;
-        }
+    /* Cell states (always rebuilt from model in render(); never string-patched) */
+    #board td.given { font-weight: bold; cursor: default; }
+    #board td.same  { background: #e4e4e4; }
+    #board td.peer  { background: #f2f2f2; }
+    #board td.sel   { background: #b8b8b8; }
+    #board td.hint  { text-decoration: underline; }
+    #board td.err   { background: #000; color: #fff; font-weight: bold; }
+    #board td.err.sel { outline: 4px solid #888; outline-offset: -6px; }
 
-        /* --- Controls --- */
-        button {
-            padding: 5px 8px;
-            margin: 0 3px;
-            font-size: 30px;
-            cursor: pointer;
-            background-color: #ffffff;
-            color: #000000;
-            border: 1px solid #000000;
-            min-width: 40px;
-        }
-        #bottom-bar button {
-            width: 60px;
-            height: 60px;
-            font-size: 60px;
-            margin: 0 2px;
-            padding: 0;
-            line-height: 40px;
-        }
-        #difficulty-selector { margin-bottom: 10px; }
-        #difficulty-selector button.active { background-color: #cccccc; font-weight: bold; }
-
-        /* --- Sudoku Grid --- */
-        #sudoku-grid {
-            border-collapse: collapse;
-            margin: 5px auto;
-            border: 4px solid black;
-        }
-        #sudoku-grid td {
-            width: 96px;
-            height: 96px;
-            border: 2px solid #cccccc; /* Light grey lines */
-            text-align: center;
-            vertical-align: middle;
-            font-size: 80px;
-            cursor: pointer;
-            padding: 0;
-            /* Ensure border changes don't shift layout */
-            box-sizing: border-box;
-        }
-        #sudoku-grid tr:nth-child(3n) td { border-bottom: 2px solid black; }
-        #sudoku-grid td:nth-child(3n) { border-right: 2px solid black; }
-        #sudoku-grid tr:last-child td { border-bottom: none; }
-        #sudoku-grid td:last-child { border-right: none; }
-
-        /* Cell States */
-        .cell-content {
-            display: block;
-            width: 100%;
-            height: 100%;
-            line-height: 95px; /* Match cell height */
-        }
-        td.fixed .cell-content { /* Apply fixed style to content inside fixed TD */
-            font-weight: bold;
-            color: #333333;
-        }
-         td.fixed { /* Make fixed TD itself non-clickable visually */
-             cursor: default;
-         }
-        td.selected .cell-content {
-            background-color: #dddddd; /* Light grey selection on content */
-        }
-        td.error .cell-content { /* Error style on content */
-            background-color: #000000; /* Black background */
-            color: #ffffff; /* White text */
-            font-weight: bold;
-        }
-        /* NEW: Hint location style on the TD itself */
-        td.hint-location {
-            border: 2px dashed #333333 !important; /* Dashed border, !important to override others */
-            /* background-color: #f0f0f0; */ /* Optional: subtle background */
-        }
-
-    </style>
+    #pad { text-align: center; margin-top: 8px; }
+    #pad button { padding: 0; font-weight: bold; }
+    #pad button.done { color: #999; border-color: #999; }
+</style>
 </head>
 <body>
 
-    <div id="top-bar">
-        <div id="top-bar-buttons">
-            <button id="new-game-btn">New</button>
-            <button id="check-btn">Check</button>
-            <button id="hint-btn">Hint</button>
-        </div>
-        <div id="top-bar-message">
-             <span id="message-area">Loading...</span>
-        </div>
+<div id="bar">
+    <div id="bar-left">
+        <button id="btn-new">New</button>
+        <button id="btn-check">Check</button>
+        <button id="btn-hint">Hint</button>
     </div>
-
-    <div id="middle-area">
-        <div id="difficulty-selector">
-            Difficulty:
-            <button id="diff-easy" data-difficulty="easy">Easy</button>
-            <button id="diff-medium" data-difficulty="medium">Medium</button>
-            <button id="diff-hard" data-difficulty="hard">Hard</button>
-        </div>
-
-        <table id="sudoku-grid">
-            <!-- Grid will be generated by JavaScript -->
-        </table>
+    <div id="bar-right">
+        <button id="diff-easy">Easy</button>
+        <button id="diff-medium">Med</button>
+        <button id="diff-hard">Hard</button>
     </div>
+</div>
 
-    <div id="bottom-bar">
-        <button data-num="1">1</button>
-        <button data-num="2">2</button>
-        <button data-num="3">3</button>
-        <button data-num="4">4</button>
-        <button data-num="5">5</button>
-        <button data-num="6">6</button>
-        <button data-num="7">7</button>
-        <button data-num="8">8</button>
-        <button data-num="9">9</button>
-        <button data-num="0">X</button> <!-- Clear button -->
-    </div>
+<div id="msg">Loading&hellip;</div>
 
-    <script>
-        // --- ES3 Compatible JavaScript ---
+<div id="board-wrap"><table id="board"><tbody id="board-body"></tbody></table></div>
 
-        // --- Global Variables ---
-        var grid = [];
-        var solution = [];
-        var initialGrid = [];
-        var selectedCell = null; // { row: r, col: c }
-        var difficulty = 'medium';
-        var generating = false;
+<div id="pad"></div>
 
-        var difficultySettings = { easy: 35, medium: 45, hard: 55 };
+<script>
+// Written in ES3 so it runs on old Kindle / e-reader WebKit builds:
+// var only, no arrow functions, no let/const, no template strings, no Array extras.
+(function () {
 
-        // --- DOM References ---
-        var gridElement = null;
-        var messageArea = null;
-        var difficultyButtons = {};
-        var topBarButtons = {};
-        var numberButtons = [];
+    // ------------------------------------------------------------------
+    // Geometry tables
+    // ------------------------------------------------------------------
+    var ROW = [], COL = [], BOX = [], PEERS = [];
+    var BITS = [];     // BITS[mask] = number of set bits (0..511)
+    var i, j;
 
-        // --- Core Sudoku Logic (isValid, findEmpty, solveSudoku, shuffleArray - unchanged) ---
-        function findEmpty(board) {
-            for (var r = 0; r < 9; r++) {
-                for (var c = 0; c < 9; c++) {
-                    if (board[r][c] === 0) { return [r, c]; }
-                }
+    for (i = 0; i < 81; i++) {
+        ROW[i] = Math.floor(i / 9);
+        COL[i] = i % 9;
+        BOX[i] = Math.floor(ROW[i] / 3) * 3 + Math.floor(COL[i] / 3);
+    }
+    for (i = 0; i < 81; i++) {
+        PEERS[i] = [];
+        for (j = 0; j < 81; j++) {
+            if (j !== i && (ROW[j] === ROW[i] || COL[j] === COL[i] || BOX[j] === BOX[i])) {
+                PEERS[i].push(j);
             }
-            return null;
         }
-        function isValid(board, row, col, num) {
-            for (var c = 0; c < 9; c++) { if (board[row][c] === num && col !== c) { return false; } }
-            for (var r = 0; r < 9; r++) { if (board[r][col] === num && row !== r) { return false; } }
-            var boxRowStart = Math.floor(row / 3) * 3;
-            var boxColStart = Math.floor(col / 3) * 3;
-            for (var r = 0; r < 3; r++) {
-                for (var c = 0; c < 3; c++) {
-                    if (board[boxRowStart + r][boxColStart + c] === num && (boxRowStart + r !== row || boxColStart + c !== col)) { return false; }
+    }
+    for (i = 0; i < 512; i++) {
+        var n = 0, m = i;
+        while (m) { n += m & 1; m >>= 1; }
+        BITS[i] = n;
+    }
+
+    function shuffle(a) {
+        for (var k = a.length - 1; k > 0; k--) {
+            var r = Math.floor(Math.random() * (k + 1));
+            var t = a[k]; a[k] = a[r]; a[r] = t;
+        }
+        return a;
+    }
+
+    // ------------------------------------------------------------------
+    // Solver: bitmask backtracking, most-constrained cell first.
+    // Returns the number of solutions found, stopping at `limit`.
+    // If `out` is an array, the first solution is copied into it.
+    // `cells` is restored to its original contents before returning.
+    // ------------------------------------------------------------------
+    function solve(cells, limit, randomOrder, out) {
+        var rows = [0,0,0,0,0,0,0,0,0], cols = [0,0,0,0,0,0,0,0,0], boxes = [0,0,0,0,0,0,0,0,0];
+        var found = 0, k;
+
+        for (k = 0; k < 81; k++) {
+            var v = cells[k];
+            if (v) {
+                var b = 1 << (v - 1);
+                if ((rows[ROW[k]] | cols[COL[k]] | boxes[BOX[k]]) & b) { return 0; }
+                rows[ROW[k]] |= b; cols[COL[k]] |= b; boxes[BOX[k]] |= b;
+            }
+        }
+
+        function search() {
+            var best = -1, bestMask = 0, bestCount = 10, c, mask, cnt;
+            for (c = 0; c < 81; c++) {
+                if (cells[c] === 0) {
+                    mask = ~(rows[ROW[c]] | cols[COL[c]] | boxes[BOX[c]]) & 511;
+                    cnt = BITS[mask];
+                    if (cnt === 0) { return; }
+                    if (cnt < bestCount) {
+                        best = c; bestMask = mask; bestCount = cnt;
+                        if (cnt === 1) { break; }
+                    }
                 }
             }
+            if (best === -1) {
+                found++;
+                if (out && found === 1) {
+                    for (var q = 0; q < 81; q++) { out[q] = cells[q]; }
+                }
+                return;
+            }
+            var digits = [];
+            for (var d = 1; d <= 9; d++) {
+                if (bestMask & (1 << (d - 1))) { digits.push(d); }
+            }
+            if (randomOrder) { shuffle(digits); }
+            var r = ROW[best], co = COL[best], bx = BOX[best];
+            for (var x = 0; x < digits.length; x++) {
+                var bit = 1 << (digits[x] - 1);
+                cells[best] = digits[x];
+                rows[r] |= bit; cols[co] |= bit; boxes[bx] |= bit;
+                search();
+                rows[r] &= ~bit; cols[co] &= ~bit; boxes[bx] &= ~bit;
+                cells[best] = 0;
+                if (found >= limit) { return; }
+            }
+        }
+
+        search();
+        return found;
+    }
+
+    // ------------------------------------------------------------------
+    // Generator: random full grid, then remove cells one at a time,
+    // keeping a removal only if the puzzle still has exactly one solution.
+    // Work is split across timer ticks so slow devices stay responsive.
+    // ------------------------------------------------------------------
+    var TARGET_HOLES = { easy: 38, medium: 47, hard: 56 };
+    var genToken = 0;
+
+    function generate(diff, onDone) {
+        var token = ++genToken;
+        var empty = [], solution = [];
+        for (var k = 0; k < 81; k++) { empty[k] = 0; }
+        solve(empty, 1, true, solution);
+
+        var puzzle = solution.slice(0);
+        var order = [];
+        for (k = 0; k < 81; k++) { order[k] = k; }
+        shuffle(order);
+
+        var target = TARGET_HOLES[diff] || 47;
+        var idx = 0, holes = 0;
+
+        function step() {
+            if (token !== genToken) { return; }           // superseded by a newer request
+            var budget = 6;
+            while (idx < 81 && holes < target && budget-- > 0) {
+                var c = order[idx++];
+                var keep = puzzle[c];
+                puzzle[c] = 0;
+                if (solve(puzzle, 2, false, null) === 1) { holes++; }
+                else { puzzle[c] = keep; }
+            }
+            if (idx >= 81 || holes >= target) { onDone(puzzle, solution); }
+            else { setTimeout(step, 0); }
+        }
+        setTimeout(step, 0);
+    }
+
+    // ------------------------------------------------------------------
+    // Game state
+    // ------------------------------------------------------------------
+    var S = {
+        difficulty: 'medium',
+        given: [],      // 81 ints, 0 = blank
+        values: [],     // 81 ints, current board
+        solution: [],   // 81 ints
+        errors: [],     // 81 bools, set by Check, cleared by edits
+        hinted: [],     // 81 bools
+        selected: -1,
+        hintsUsed: 0,
+        solved: false,
+        ready: false
+    };
+
+    var STORE_KEY = 'kindle-sudoku-v2';
+
+    function save() {
+        try {
+            if (!window.localStorage || !window.JSON) { return; }
+            window.localStorage.setItem(STORE_KEY, JSON.stringify({
+                d: S.difficulty, g: S.given, v: S.values, s: S.solution,
+                h: S.hinted, n: S.hintsUsed, ok: S.solved
+            }));
+        } catch (e) { /* storage unavailable; ignore */ }
+    }
+
+    function load() {
+        try {
+            if (!window.localStorage || !window.JSON) { return false; }
+            var raw = window.localStorage.getItem(STORE_KEY);
+            if (!raw) { return false; }
+            var o = JSON.parse(raw);
+            if (!o || !o.g || o.g.length !== 81 || !o.v || o.v.length !== 81 || !o.s || o.s.length !== 81) { return false; }
+            S.difficulty = TARGET_HOLES[o.d] ? o.d : 'medium';
+            S.given = o.g; S.values = o.v; S.solution = o.s;
+            S.hinted = (o.h && o.h.length === 81) ? o.h : blankBools();
+            S.errors = blankBools();
+            S.hintsUsed = o.n || 0;
+            S.solved = !!o.ok;
+            S.selected = -1;
+            S.ready = true;
             return true;
+        } catch (e) { return false; }
+    }
+
+    function blankBools() {
+        var a = [];
+        for (var k = 0; k < 81; k++) { a[k] = false; }
+        return a;
+    }
+
+    // ------------------------------------------------------------------
+    // DOM
+    // ------------------------------------------------------------------
+    var $ = function (id) { return document.getElementById(id); };
+    var tds = [], baseClass = [], padButtons = [];
+
+    function buildBoard() {
+        var body = $('board-body');
+        for (var r = 0; r < 9; r++) {
+            var tr = document.createElement('tr');
+            for (var c = 0; c < 9; c++) {
+                var k = r * 9 + c;
+                var td = document.createElement('td');
+                var cls = [];
+                if (c === 2 || c === 5) { cls.push('br'); }
+                if (r === 2 || r === 5) { cls.push('bb'); }
+                baseClass[k] = cls.join(' ');
+                td.setAttribute('data-i', String(k));
+                tds[k] = td;
+                tr.appendChild(td);
+            }
+            body.appendChild(tr);
         }
-        function shuffleArray(array) {
-            var currentIndex = array.length, temporaryValue, randomIndex;
-            while (0 !== currentIndex) {
-                randomIndex = Math.floor(Math.random() * currentIndex);
-                currentIndex -= 1;
-                temporaryValue = array[currentIndex];
-                array[currentIndex] = array[randomIndex];
-                array[randomIndex] = temporaryValue;
-            }
-            return array;
-        }
-        function solveSudoku(board) {
-            var find = findEmpty(board);
-            var row, col;
-            if (!find) { return true; } else { row = find[0]; col = find[1]; }
-            var numbers = shuffleArray([1, 2, 3, 4, 5, 6, 7, 8, 9]);
-            for (var i = 0; i < numbers.length; i++) {
-                var num = numbers[i];
-                if (isValid(board, row, col, num)) {
-                    board[row][col] = num;
-                    if (solveSudoku(board)) { return true; }
-                    board[row][col] = 0; // Backtrack
-                }
-            }
-            return false;
-        }
-
-        // --- Puzzle Generation (unchanged) ---
-        function generateNewPuzzle() {
-            if (generating) return;
-            generating = true;
-            setMessage("Generating... please wait (slow on Kindle)");
-            clearGridUI();
-            clearHintLocation(); // Clear hint if generating new puzzle
-            setTimeout(function() {
-                var newGrid = [];
-                for (var r = 0; r < 9; r++) { newGrid[r] = [0,0,0,0,0,0,0,0,0]; }
-                solveSudoku(newGrid);
-                solution = [];
-                 for (var r = 0; r < 9; r++) { solution[r] = newGrid[r].slice(); }
-                var cellsToRemove = difficultySettings[difficulty] || 45;
-                var attempts = cellsToRemove * 2;
-                var removedCount = 0;
-                while (removedCount < cellsToRemove && attempts > 0) {
-                    var r = Math.floor(Math.random() * 9);
-                    var c = Math.floor(Math.random() * 9);
-                    if (newGrid[r][c] !== 0) { newGrid[r][c] = 0; removedCount++; }
-                    attempts--;
-                }
-                grid = []; initialGrid = [];
-                for (var r = 0; r < 9; r++) { grid[r] = newGrid[r].slice(); initialGrid[r] = newGrid[r].slice(); }
-                renderGrid();
-                setMessage("New " + difficulty + " puzzle ready!");
-                generating = false;
-                selectedCell = null;
-            }, 50);
-        }
-
-        // --- UI Rendering and Interaction ---
-
-        function createGridUI() {
-            var tbody = gridElement.tBodies[0];
-            if (!tbody) { tbody = document.createElement('tbody'); gridElement.appendChild(tbody); }
-            tbody.innerHTML = '';
-            for (var r = 0; r < 9; r++) {
-                var tr = document.createElement('tr');
-                for (var c = 0; c < 9; c++) {
-                    var td = document.createElement('td');
-                    td.id = 'cell-' + r + '-' + c;
-                    td.setAttribute('data-row', r);
-                    td.setAttribute('data-col', c);
-                    var div = document.createElement('div');
-                    div.className = 'cell-content';
-                    td.appendChild(div);
-                    td.onclick = (function(row, col) { return function() { handleCellClick(row, col); }; })(r, c);
-                    tr.appendChild(td);
-                }
-                tbody.appendChild(tr);
-            }
-        }
-
-        function renderGrid() {
-            if (!gridElement || !gridElement.tBodies[0]) { consoleLogError("Grid element not ready"); return; }
-            var tbody = gridElement.tBodies[0];
-            for (var r = 0; r < 9; r++) {
-                for (var c = 0; c < 9; c++) {
-                    var td = document.getElementById('cell-' + r + '-' + c);
-                    if (!td) continue;
-                    var cellContentDiv = td.firstChild;
-                    var value = grid[r][c];
-                    var initialValue = initialGrid[r][c];
-
-                    // Reset classes first (keep hint location if present)
-                    var currentClasses = td.className;
-                    var isHint = currentClasses.indexOf('hint-location') > -1;
-                    td.className = isHint ? 'hint-location' : ''; // Reset TD class, preserving hint
-
-                    cellContentDiv.className = 'cell-content'; // Reset div class
-
-                    if (value !== 0) {
-                        cellContentDiv.innerHTML = value;
-                        if (initialValue !== 0) {
-                            td.className += ' fixed'; // Add 'fixed' class to TD
-                        }
-                    } else {
-                        cellContentDiv.innerHTML = ' ';
-                    }
-
-                    // Re-apply selection if this is the selected cell
-                    if (selectedCell && selectedCell.row === r && selectedCell.col === c) {
-                         td.className += ' selected'; // Add selected class to TD
-                    }
-                    // Note: Error class is applied during checkPuzzle
-                }
-            }
-        }
-
-        function clearGridUI() {
-             if (!gridElement || !gridElement.tBodies[0]) return;
-             var cells = gridElement.getElementsByTagName('td');
-             for(var i = 0; i < cells.length; i++) {
-                 var cellContentDiv = cells[i].firstChild;
-                 if (cellContentDiv) { cellContentDiv.innerHTML = ' '; cellContentDiv.className = 'cell-content'; }
-                 cells[i].className = ''; // Clear all TD classes
-             }
-        }
-
-        // NEW: Helper to remove hint highlight
-        function clearHintLocation() {
-            if (!gridElement || !gridElement.tBodies[0]) return;
-            var cells = gridElement.getElementsByTagName('td');
-            for (var i = 0; i < cells.length; i++) {
-                // Check if class exists and remove it
-                if ((" " + cells[i].className + " ").indexOf(" hint-location ") > -1) {
-                     cells[i].className = (" " + cells[i].className + " ").replace(" hint-location ", " ").replace(/^\s+|\s+$/g, ""); // Remove class safely
-                }
-            }
-        }
-
-        function handleCellClick(r, c) {
-            if (generating) return;
-
-            clearHintLocation(); // Remove hint highlight on any click
-
-            if (initialGrid[r][c] !== 0) {
-                 // Clicked on a fixed cell, deselect previous if any
-                 if (selectedCell) {
-                    var prevTd = document.getElementById('cell-' + selectedCell.row + '-' + selectedCell.col);
-                    if (prevTd) prevTd.className = prevTd.className.replace(' selected', '');
-                 }
-                 selectedCell = null;
-                return;
-            }
-
-            // Deselect previous cell
-            if (selectedCell) {
-                var prevTd = document.getElementById('cell-' + selectedCell.row + '-' + selectedCell.col);
-                 if (prevTd) prevTd.className = prevTd.className.replace(' selected', '');
-            }
-
-            // Select new cell
-            selectedCell = { row: r, col: c };
-            var currentTd = document.getElementById('cell-' + r + '-' + c);
-            if (currentTd) {
-                // Add selected class, remove error class if present
-                currentTd.className = currentTd.className.replace(' error', '');
-                currentTd.className += ' selected';
-            }
-        }
-
-        function handleNumberInput(num) {
-            if (generating || !selectedCell) return;
-
-            clearHintLocation(); // Remove hint highlight on number input
-
-            var r = selectedCell.row;
-            var c = selectedCell.col;
-
-            if (initialGrid[r][c] !== 0) return; // Cannot change fixed cells
-
-            var td = document.getElementById('cell-' + r + '-' + c);
-            var cellContentDiv = td.firstChild;
-
-            grid[r][c] = num; // Update model (0 for clear)
-
-            // Update view
-            if (num === 0) {
-                cellContentDiv.innerHTML = ' ';
-            } else {
-                cellContentDiv.innerHTML = num;
-            }
-
-            // Clear error state when number is input
-            td.className = td.className.replace(' error', '');
-        }
-
-        function checkPuzzle() {
-            if (generating) return;
-            clearHintLocation(); // Remove hint highlight on check
-
-            var errors = 0;
-            var filledCount = 0;
-            var correctCount = 0;
-
-            for (var r = 0; r < 9; r++) {
-                for (var c = 0; c < 9; c++) {
-                    var td = document.getElementById('cell-' + r + '-' + c);
-                    td.className = td.className.replace(' error', ''); // Clear previous errors on TD
-
-                    if (initialGrid[r][c] === 0) { // Only check user-entered cells
-                        if (grid[r][c] !== 0) {
-                            filledCount++;
-                            if (grid[r][c] !== solution[r][c]) {
-                                errors++;
-                                td.className += ' error'; // Add error class to TD
-                            } else {
-                                correctCount++;
-                            }
-                        }
-                    } else {
-                        filledCount++; // Count fixed cells as filled
-                        correctCount++; // Fixed cells are always correct
-                    }
-                }
-            }
-
-            if (errors > 0) {
-                setMessage(errors + " error(s) found.");
-            } else if (filledCount < 81) {
-                setMessage("No errors so far. Keep going!");
-            } else {
-                setMessage("Congratulations! Solved!");
-            }
-        }
-
-        // MODIFIED: Hint function
-        function giveHint() {
-            if (generating) return;
-
-            clearHintLocation(); // Clear any previous hint first
-
-            var emptyOrIncorrectCells = [];
-            for (var r = 0; r < 9; r++) {
-                for (var c = 0; c < 9; c++) {
-                    // Find cells that are empty OR user-filled and incorrect
-                    if (grid[r][c] === 0 || (initialGrid[r][c] === 0 && grid[r][c] !== solution[r][c])) {
-                        emptyOrIncorrectCells.push({ row: r, col: c });
-                    }
-                }
-            }
-
-            if (emptyOrIncorrectCells.length === 0) {
-                setMessage("Puzzle complete or no errors!");
-                return;
-            }
-
-            // Pick a random cell to hint
-            var randomIndex = Math.floor(Math.random() * emptyOrIncorrectCells.length);
-            var cellToHint = emptyOrIncorrectCells[randomIndex];
-            var r = cellToHint.row;
-            var c = cellToHint.col;
-
-            // Highlight the cell's TD element
-            var td = document.getElementById('cell-' + r + '-' + c);
-            if (td) {
-                 // Ensure other classes (like 'selected' or 'error') are not wiped out if they exist
-                 if (td.className.indexOf('hint-location') === -1) { // Avoid adding multiple times
-                     td.className += ' hint-location';
-                 }
-                 // Deselect the cell if it was selected, as the hint is now the focus
-                 if (selectedCell && selectedCell.row === r && selectedCell.col === c) {
-                     td.className = td.className.replace(' selected', '');
-                     selectedCell = null;
-                 }
-                 setMessage("Hint: Check cell at R" + (r + 1) + ", C" + (c + 1) + ".");
-            } else {
-                 setMessage("Hint error: Cell not found.");
-            }
-        }
-
-
-        function setDifficulty(newDifficulty) {
-            if (generating) return;
-            difficulty = newDifficulty;
-            for (var key in difficultyButtons) {
-                if (difficultyButtons.hasOwnProperty(key)) {
-                    difficultyButtons[key].className = (key === newDifficulty) ? 'active' : '';
-                }
-            }
-            generateNewPuzzle();
-        }
-
-        function setMessage(msg) {
-            if (messageArea) { messageArea.innerHTML = msg; }
-            else { consoleLog(msg); }
-        }
-        function consoleLog(msg) { if (window.console && window.console.log) { window.console.log(msg); } }
-        function consoleLogError(msg) { if (window.console && window.console.error) { window.console.error(msg); } else { consoleLog("ERROR: " + msg); } }
-
-        // --- Initialization ---
-        window.onload = function() {
-            gridElement = document.getElementById('sudoku-grid');
-            messageArea = document.getElementById('message-area');
-
-            topBarButtons.newGame = document.getElementById('new-game-btn');
-            topBarButtons.check = document.getElementById('check-btn');
-            topBarButtons.hint = document.getElementById('hint-btn');
-            difficultyButtons.easy = document.getElementById('diff-easy');
-            difficultyButtons.medium = document.getElementById('diff-medium');
-            difficultyButtons.hard = document.getElementById('diff-hard');
-            var bottomBar = document.getElementById('bottom-bar');
-            var numButtonsRaw = bottomBar.getElementsByTagName('button');
-            for(var i = 0; i < numButtonsRaw.length; i++) { numberButtons.push(numButtonsRaw[i]); }
-
-            topBarButtons.newGame.onclick = generateNewPuzzle;
-            topBarButtons.check.onclick = checkPuzzle;
-            topBarButtons.hint.onclick = giveHint;
-            difficultyButtons.easy.onclick = function() { setDifficulty('easy'); };
-            difficultyButtons.medium.onclick = function() { setDifficulty('medium'); };
-            difficultyButtons.hard.onclick = function() { setDifficulty('hard'); };
-            for (var i = 0; i < numberButtons.length; i++) {
-                numberButtons[i].onclick = (function(button) {
-                    var num = parseInt(button.getAttribute('data-num'), 10);
-                    return function() { handleNumberInput(num); };
-                })(numberButtons[i]);
-            }
-
-             if (!gridElement) { consoleLogError("Failed to find #sudoku-grid!"); setMessage("Error: Grid container not found."); return; }
-             createGridUI();
-             setDifficulty(difficulty); // Initial setup and first puzzle generation
+        $('board').onclick = function (ev) {
+            ev = ev || window.event;
+            var t = ev.target || ev.srcElement;
+            while (t && t.nodeName !== 'TD') { t = t.parentNode; }
+            if (t && t.getAttribute) { selectCell(parseInt(t.getAttribute('data-i'), 10)); }
         };
-    </script>
+    }
 
+    function buildPad() {
+        var pad = $('pad');
+        var labels = ['1','2','3','4','5','6','7','8','9','X'];
+        for (var k = 0; k < labels.length; k++) {
+            var b = document.createElement('button');
+            b.innerHTML = labels[k];
+            b.onclick = (function (num) { return function () { enter(num); }; })(k === 9 ? 0 : k + 1);
+            padButtons.push(b);
+            pad.appendChild(b);
+        }
+    }
+
+    function viewport() {
+        var de = document.documentElement, b = document.body;
+        return {
+            w: window.innerWidth || (de && de.clientWidth) || b.clientWidth || 600,
+            h: window.innerHeight || (de && de.clientHeight) || b.clientHeight || 800
+        };
+    }
+
+    // Size everything in pixels from the viewport (old engines lack vw/vh/calc/flex).
+    function layout() {
+        var vp = viewport();
+        var barH = $('bar').offsetHeight || 50;
+        var msgH = $('msg').offsetHeight + 8;
+
+        var twoRows = vp.w < 520;
+        var perRow = twoRows ? 5 : 10;
+        var btn = Math.floor((vp.w - 12) / perRow) - 4;
+        if (btn > 96) { btn = 96; }
+        if (btn < 30) { btn = 30; }
+        var padH = (twoRows ? 2 : 1) * (btn + 4) + 12;
+
+        var avail = Math.min(vp.w - 16, vp.h - barH - msgH - padH - 12);
+        var cell = Math.floor((avail - 18) / 9);
+        if (cell < 24) { cell = 24; }
+
+        var fs = Math.floor(cell * 0.66) + 'px';
+        for (var k = 0; k < 81; k++) {
+            var st = tds[k].style;
+            st.width = cell + 'px';
+            st.height = cell + 'px';
+            st.fontSize = fs;
+            st.lineHeight = cell + 'px';
+        }
+        for (k = 0; k < padButtons.length; k++) {
+            var ps = padButtons[k].style;
+            ps.width = btn + 'px';
+            ps.height = btn + 'px';
+            ps.fontSize = Math.floor(btn * 0.6) + 'px';
+        }
+    }
+
+    function render() {
+        var selVal = S.selected >= 0 ? S.values[S.selected] : 0;
+        var selPeers = {};
+        if (S.selected >= 0) {
+            var p = PEERS[S.selected];
+            for (var q = 0; q < p.length; q++) { selPeers[p[q]] = true; }
+        }
+        var counts = [0,0,0,0,0,0,0,0,0,0];
+
+        for (var k = 0; k < 81; k++) {
+            var v = S.values[k];
+            counts[v]++;
+            var cls = baseClass[k];
+            if (S.given[k]) { cls += ' given'; }
+            if (S.hinted[k]) { cls += ' hint'; }
+            if (S.errors[k]) { cls += ' err'; }
+            if (k === S.selected) { cls += ' sel'; }
+            else if (selVal && v === selVal) { cls += ' same'; }
+            else if (selPeers[k]) { cls += ' peer'; }
+            tds[k].className = cls;
+            tds[k].innerHTML = v ? String(v) : '&nbsp;';
+        }
+        for (var d = 1; d <= 9; d++) {
+            padButtons[d - 1].className = counts[d] >= 9 ? 'done' : '';
+        }
+        var keys = ['easy', 'medium', 'hard'];
+        for (k = 0; k < keys.length; k++) {
+            $('diff-' + keys[k]).className = (keys[k] === S.difficulty) ? 'on' : '';
+        }
+    }
+
+    function say(text) { $('msg').innerHTML = text; }
+
+    function label(d) { return d === 'medium' ? 'Medium' : d.charAt(0).toUpperCase() + d.substring(1); }
+
+    // ------------------------------------------------------------------
+    // Actions
+    // ------------------------------------------------------------------
+    function newGame(diff) {
+        if (diff) { S.difficulty = diff; }
+        S.ready = false;
+        S.selected = -1;
+        say('Generating ' + label(S.difficulty) + ' puzzle&hellip;');
+        render();
+        generate(S.difficulty, function (puzzle, solution) {
+            S.given = puzzle.slice(0);
+            S.values = puzzle.slice(0);
+            S.solution = solution;
+            S.errors = blankBools();
+            S.hinted = blankBools();
+            S.hintsUsed = 0;
+            S.solved = false;
+            S.ready = true;
+            var holes = 0;
+            for (var k = 0; k < 81; k++) { if (!puzzle[k]) { holes++; } }
+            say(label(S.difficulty) + ': ' + (81 - holes) + ' clues. Tap a cell.');
+            render();
+            save();
+        });
+    }
+
+    function selectCell(k) {
+        if (!S.ready || isNaN(k)) { return; }
+        S.selected = (S.selected === k) ? -1 : k;
+        render();
+    }
+
+    function enter(num) {
+        if (!S.ready || S.selected < 0) { return; }
+        var k = S.selected;
+        if (S.given[k] || S.hinted[k] || S.solved) { return; }
+        S.values[k] = (S.values[k] === num) ? 0 : num;
+        S.errors[k] = false;
+        afterChange();
+    }
+
+    function afterChange() {
+        if (isComplete()) {
+            S.solved = true;
+            S.errors = blankBools();
+            say('Solved!' + (S.hintsUsed ? ' (' + S.hintsUsed + ' hint' + (S.hintsUsed === 1 ? '' : 's') + ')' : ''));
+        }
+        render();
+        save();
+    }
+
+    function isComplete() {
+        for (var k = 0; k < 81; k++) {
+            if (S.values[k] !== S.solution[k]) { return false; }
+        }
+        return true;
+    }
+
+    function check() {
+        if (!S.ready) { return; }
+        var wrong = 0, blank = 0;
+        for (var k = 0; k < 81; k++) {
+            S.errors[k] = false;
+            if (S.given[k]) { continue; }
+            if (!S.values[k]) { blank++; }
+            else if (S.values[k] !== S.solution[k]) { S.errors[k] = true; wrong++; }
+        }
+        if (wrong) { say(wrong + ' wrong. ' + blank + ' empty.'); }
+        else if (blank) { say('No mistakes. ' + blank + ' to go.'); }
+        else { say('Solved!'); }
+        render();
+    }
+
+    function hint() {
+        if (!S.ready || S.solved) { return; }
+        var k = S.selected;
+        if (k < 0 || S.given[k] || S.values[k] === S.solution[k]) {
+            // Prefer a wrong entry, else the empty cell with the fewest candidates.
+            k = -1;
+            var bestCount = 10;
+            for (var c = 0; c < 81; c++) {
+                if (S.values[c] && S.values[c] !== S.solution[c]) { k = c; break; }
+                if (!S.values[c]) {
+                    var used = 0, p = PEERS[c];
+                    for (var q = 0; q < p.length; q++) { if (S.values[p[q]]) { used |= 1 << (S.values[p[q]] - 1); } }
+                    var cnt = BITS[~used & 511];
+                    if (cnt < bestCount) { bestCount = cnt; k = c; }
+                }
+            }
+        }
+        if (k < 0) { return; }
+        S.values[k] = S.solution[k];
+        S.hinted[k] = true;
+        S.errors[k] = false;
+        S.hintsUsed++;
+        S.selected = k;
+        say('Hint: R' + (ROW[k] + 1) + ' C' + (COL[k] + 1) + ' is ' + S.solution[k] + '.');
+        afterChange();
+    }
+
+    function onKey(ev) {
+        ev = ev || window.event;
+        var code = ev.keyCode || ev.which;
+        if (code >= 49 && code <= 57) { enter(code - 48); }
+        else if (code >= 97 && code <= 105) { enter(code - 96); }
+        else if (code === 8 || code === 46 || code === 48 || code === 96) { enter(0); }
+        else if (code >= 37 && code <= 40) {
+            var k = S.selected < 0 ? 40 : S.selected;
+            var r = ROW[k], c = COL[k];
+            if (code === 37) { c = (c + 8) % 9; }
+            if (code === 39) { c = (c + 1) % 9; }
+            if (code === 38) { r = (r + 8) % 9; }
+            if (code === 40) { r = (r + 1) % 9; }
+            S.selected = r * 9 + c;
+            render();
+        } else { return true; }
+        if (ev.preventDefault) { ev.preventDefault(); }
+        return false;
+    }
+
+    // ------------------------------------------------------------------
+    // Boot
+    // ------------------------------------------------------------------
+    window.onload = function () {
+        buildBoard();
+        buildPad();
+        $('btn-new').onclick = function () { newGame(); };
+        $('btn-check').onclick = check;
+        $('btn-hint').onclick = hint;
+        $('diff-easy').onclick = function () { newGame('easy'); };
+        $('diff-medium').onclick = function () { newGame('medium'); };
+        $('diff-hard').onclick = function () { newGame('hard'); };
+        document.onkeydown = onKey;
+        window.onresize = layout;
+
+        layout();
+        if (load()) {
+            say(S.solved ? 'Solved! Tap New for another.' : 'Welcome back. ' + label(S.difficulty) + ' puzzle restored.');
+            render();
+        } else {
+            newGame('medium');
+        }
+    };
+
+    // Exposed for automated testing only.
+    window.__sudoku = { solve: solve, generate: generate, state: S };
+})();
+</script>
 </body>
 </html>
